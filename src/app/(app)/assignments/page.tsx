@@ -1,15 +1,20 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { BookOpen, Sparkles, ArrowRight } from "lucide-react";
 
+type AssignmentRow = Prisma.AssignmentGetPayload<{
+  include: { course: true; localState: true };
+}>;
+
 export default async function AssignmentsPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  let assignments;
+  let assignments: AssignmentRow[] = [];
   try {
     assignments = await prisma.assignment.findMany({
     where: { course: { userId: session.user.id } },

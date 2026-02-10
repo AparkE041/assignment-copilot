@@ -1,16 +1,23 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { CalendarView } from "./calendar-view";
 import { AutoPlanButton } from "./auto-plan-button";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Calendar, Settings } from "lucide-react";
 
+type PlannedSessionRow = Prisma.PlannedSessionGetPayload<{
+  include: {
+    assignment: { select: { id: true; title: true; course: { select: { name: true } } } };
+  };
+}>;
+
 export default async function CalendarPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  let plannedSessions;
+  let plannedSessions: PlannedSessionRow[] = [];
   try {
     plannedSessions = await prisma.plannedSession.findMany({
     where: { userId: session.user.id },

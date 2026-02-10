@@ -1,14 +1,22 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Library, BookOpen, ChevronRight } from "lucide-react";
+
+type CourseRow = Prisma.CourseGetPayload<{
+  include: {
+    _count: { select: { assignments: true } };
+    assignments: { select: { id: true; title: true; dueAt: true } };
+  };
+}>;
 
 export default async function ClassesPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  let courses;
+  let courses: CourseRow[] = [];
   try {
     courses = await prisma.course.findMany({
     where: { userId: session.user.id },
