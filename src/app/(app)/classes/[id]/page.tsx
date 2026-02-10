@@ -2,7 +2,6 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { format } from "date-fns";
 import {
   Library,
   BookOpen,
@@ -15,6 +14,7 @@ import { CategorizeSyllabusButton } from "@/components/syllabus/categorize-sylla
 import { SyllabusDashboard } from "@/components/syllabus/syllabus-dashboard";
 import { SanitizedHtml } from "@/components/sanitized-html";
 import { getEffectiveAssignmentStatus } from "@/lib/assignments/completion";
+import { LocalDateText } from "@/components/dates/local-date";
 
 export default async function ClassDetailPage({
   params,
@@ -192,7 +192,12 @@ export default async function ClassDetailPage({
                     </p>
                     <p className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
                       {a.dueAt
-                        ? format(new Date(a.dueAt), "MMM d, yyyy")
+                        ? (
+                          <LocalDateText
+                            iso={a.dueAt.toISOString()}
+                            pattern="MMM d, yyyy"
+                          />
+                        )
                         : "No due date"}
                       {a.effectiveStatus && (
                         <>

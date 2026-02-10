@@ -2,8 +2,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import Link from "next/link";
-import { format } from "date-fns";
 import { Library, BookOpen, ChevronRight } from "lucide-react";
+import { LocalDateText } from "@/components/dates/local-date";
 
 type CourseRow = Prisma.CourseGetPayload<{
   include: {
@@ -108,7 +108,10 @@ export default async function ClassesPage() {
                           <span className="truncate">{a.title}</span>
                           {a.dueAt && (
                             <span className="flex-shrink-0 text-xs">
-                              {format(new Date(a.dueAt), "MMM d")}
+                              <LocalDateText
+                                iso={a.dueAt.toISOString()}
+                                pattern="MMM d"
+                              />
                             </span>
                           )}
                         </li>

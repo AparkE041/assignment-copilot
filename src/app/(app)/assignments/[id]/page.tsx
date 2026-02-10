@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format } from "date-fns";
 import {
   ArrowLeft,
   Calendar,
@@ -31,6 +30,7 @@ import { AssignmentStatusSelect } from "@/components/assignment/assignment-statu
 import { Button } from "@/components/ui/button";
 import { SanitizedHtml } from "@/components/sanitized-html";
 import { getEffectiveAssignmentStatus } from "@/lib/assignments/completion";
+import { LocalDateText } from "@/components/dates/local-date";
 
 export default async function AssignmentDetailPage({
   params,
@@ -98,7 +98,11 @@ export default async function AssignmentDetailPage({
               {assignment.dueAt && (
                 <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Calendar className="w-4 h-4" />
-                  Due {format(assignment.dueAt, "MMM d, yyyy")}
+                  Due{" "}
+                  <LocalDateText
+                    iso={assignment.dueAt.toISOString()}
+                    pattern="MMM d, yyyy"
+                  />
                 </span>
               )}
               {assignment.points != null && (

@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { differenceInCalendarDays, format } from "date-fns";
 import {
   BookOpen,
   Sparkles,
@@ -15,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { getEffectiveAssignmentStatus } from "@/lib/assignments/completion";
+import { LocalDateText, LocalDueLabel } from "@/components/dates/local-date";
 
 type AssignmentRow = Prisma.AssignmentGetPayload<{
   include: { course: true; localState: true };
@@ -39,7 +39,8 @@ export default async function AssignmentsPage() {
     assignments = [];
   }
 
-  const now = new Date();
+  const nowMs = new Date().getTime();
+  const dueSoonThresholdMs = nowMs + 3 * 24 * 60 * 60 * 1000;
   const normalized = assignments.map((assignment) => {
     const effectiveStatus = getEffectiveAssignmentStatus({
       localStatus: assignment.localState?.status ?? null,
@@ -47,14 +48,14 @@ export default async function AssignmentsPage() {
       grade: assignment.grade,
       points: assignment.points,
     });
-    const daysUntilDue =
-      assignment.dueAt != null
-        ? differenceInCalendarDays(assignment.dueAt, now)
-        : null;
+    const dueAtMs = assignment.dueAt?.getTime() ?? null;
     const isCompleted = effectiveStatus === "done";
-    const isOverdue = !isCompleted && daysUntilDue != null && daysUntilDue < 0;
+    const isOverdue = !isCompleted && dueAtMs != null && dueAtMs < nowMs;
     const isDueSoon =
-      !isCompleted && daysUntilDue != null && daysUntilDue >= 0 && daysUntilDue <= 3;
+      !isCompleted &&
+      dueAtMs != null &&
+      dueAtMs >= nowMs &&
+      dueAtMs <= dueSoonThresholdMs;
 
     return {
       assignment,
@@ -62,7 +63,7 @@ export default async function AssignmentsPage() {
       isCompleted,
       isOverdue,
       isDueSoon,
-      daysUntilDue,
+      dueAtMs,
     };
   });
 
@@ -72,18 +73,18 @@ export default async function AssignmentsPage() {
       const rank = (item: (typeof normalized)[number]) => {
         if (item.isOverdue) return 0;
         if (item.isDueSoon) return 1;
-        if (item.daysUntilDue == null) return 3;
+        if (item.dueAtMs == null) return 3;
         return 2;
       };
       const rankDiff = rank(a) - rank(b);
       if (rankDiff !== 0) return rankDiff;
 
-      if (a.daysUntilDue == null && b.daysUntilDue == null) {
+      if (a.dueAtMs == null && b.dueAtMs == null) {
         return b.assignment.updatedAt.getTime() - a.assignment.updatedAt.getTime();
       }
-      if (a.daysUntilDue == null) return 1;
-      if (b.daysUntilDue == null) return -1;
-      return a.daysUntilDue - b.daysUntilDue;
+      if (a.dueAtMs == null) return 1;
+      if (b.dueAtMs == null) return -1;
+      return a.dueAtMs - b.dueAtMs;
     });
 
   const completedAssignments = normalized
@@ -112,17 +113,6 @@ export default async function AssignmentsPage() {
         Not started
       </Badge>
     );
-  }
-
-  function getDueLabel(daysUntilDue: number | null) {
-    if (daysUntilDue == null) return "No due date";
-    if (daysUntilDue < 0) {
-      const lateBy = Math.abs(daysUntilDue);
-      return lateBy === 1 ? "1 day overdue" : `${lateBy} days overdue`;
-    }
-    if (daysUntilDue === 0) return "Due today";
-    if (daysUntilDue === 1) return "Due tomorrow";
-    return `Due in ${daysUntilDue} days`;
   }
 
   return (
@@ -190,7 +180,7 @@ export default async function AssignmentsPage() {
             ) : (
               <ul className="space-y-3">
                 {activeAssignments.map(
-                  ({ assignment, effectiveStatus, isOverdue, daysUntilDue }) => (
+                  ({ assignment, effectiveStatus, isOverdue }) => (
                     <li key={assignment.id}>
                       <Link
                         href={`/assignments/${assignment.id}`}
@@ -210,8 +200,15 @@ export default async function AssignmentsPage() {
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {assignment.course.name}
-                              {assignment.dueAt &&
-                                ` · Due ${format(assignment.dueAt, "MMM d, yyyy")}`}
+                              {assignment.dueAt && (
+                                <>
+                                  {" · Due "}
+                                  <LocalDateText
+                                    iso={assignment.dueAt.toISOString()}
+                                    pattern="MMM d, yyyy"
+                                  />
+                                </>
+                              )}
                             </p>
                             <p
                               className={`mt-1 text-xs font-medium ${
@@ -220,7 +217,7 @@ export default async function AssignmentsPage() {
                                   : "text-muted-foreground"
                               }`}
                             >
-                              {getDueLabel(daysUntilDue)}
+                              <LocalDueLabel iso={assignment.dueAt?.toISOString() ?? null} />
                             </p>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
@@ -282,8 +279,15 @@ export default async function AssignmentsPage() {
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
                             {assignment.course.name}
-                            {assignment.dueAt &&
-                              ` · Due ${format(assignment.dueAt, "MMM d, yyyy")}`}
+                            {assignment.dueAt && (
+                              <>
+                                {" · Due "}
+                                <LocalDateText
+                                  iso={assignment.dueAt.toISOString()}
+                                  pattern="MMM d, yyyy"
+                                />
+                              </>
+                            )}
                           </p>
                         </div>
                         {assignment.score != null && assignment.points != null ? (
