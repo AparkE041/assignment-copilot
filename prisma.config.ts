@@ -4,8 +4,11 @@ import "dotenv/config";
 import { config } from "dotenv";
 import { defineConfig } from "prisma/config";
 
-// Load .env.local so Prisma uses the same DATABASE_URL as the app (e.g. Supabase)
-config({ path: ".env.local", override: true });
+// Load .env.local for local workflows, but never overwrite an explicit DATABASE_URL
+// provided by the shell (e.g. production migration commands).
+if (!process.env.DATABASE_URL) {
+  config({ path: ".env.local", override: false });
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
