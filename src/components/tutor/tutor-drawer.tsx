@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X } from "lucide-react";
 import { TutorChatPanel } from "./tutor-chat-panel";
@@ -11,29 +10,6 @@ interface TutorDrawerProps {
 }
 
 export function TutorDrawer({ isOpen, onClose }: TutorDrawerProps) {
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<
-    { id: string; role: "user" | "assistant"; content: string }[]
-  >([]);
-  const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (!isOpen) return;
-    startTransition(() => {
-      fetch("/api/tutor/thread")
-        .then((r) => r.json())
-        .then((data) => {
-          setThreadId(data.threadId ?? null);
-          const msgs = (data.messages ?? []).map((m: { id: string; role: string; content: string }) => ({
-            id: m.id,
-            role: (m.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
-            content: m.content,
-          }));
-          setMessages(msgs);
-        });
-    });
-  }, [isOpen]);
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -54,7 +30,7 @@ export function TutorDrawer({ isOpen, onClose }: TutorDrawerProps) {
           >
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -73,16 +49,7 @@ export function TutorDrawer({ isOpen, onClose }: TutorDrawerProps) {
               </button>
             </div>
             <div className="flex-1 min-h-0">
-              {isPending ? (
-                <div className="flex items-center justify-center h-48">
-                  <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                </div>
-              ) : (
-                <TutorChatPanel
-                  initialThreadId={threadId}
-                  initialMessages={messages}
-                />
-              )}
+              <TutorChatPanel initialMessages={[]} />
             </div>
           </motion.div>
         </>

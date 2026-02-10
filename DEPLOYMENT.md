@@ -52,7 +52,9 @@ Deploy to **Vercel** with **Supabase** (Postgres). Optional: Resend (email), Azu
    | `AZURE_OPENAI_ENDPOINT` | Optional | Azure OpenAI endpoint (users can also set in Settings). |
    | `AZURE_OPENAI_API_KEY` | Optional | Azure OpenAI API key. |
    | `AZURE_OPENAI_DEPLOYMENT` | Optional | Deployment name (e.g. `gpt-41`). |
-   | `CANVAS_BASE_URL` | Optional | `https://belmont.instructure.com` (or your Canvas URL). |
+   | `CANVAS_BASE_URL` | Optional | Your Canvas base URL (e.g. `https://your-school.instructure.com`). |
+   | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional | Enable Google OAuth login. |
+   | `GITHUB_ID` / `GITHUB_SECRET` | Optional | Enable GitHub OAuth login. |
 
 5. **Deploy**: Trigger a deploy (e.g. push to main). Vercel will run `npm run build` and `prisma generate` (via postinstall).
 

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,23 +10,6 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const thread = await prisma.tutorThread.findUnique({
-    where: { userId: session.user.id },
-    include: {
-      messages: { orderBy: { createdAt: "asc" } },
-    },
-  });
-
-  if (!thread) {
-    return NextResponse.json({ threadId: null, messages: [] });
-  }
-
-  return NextResponse.json({
-    threadId: thread.id,
-    messages: thread.messages.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-    })),
-  });
+  // Tutor sessions are intentionally ephemeral. We do not persist or restore history.
+  return NextResponse.json({ threadId: null, messages: [] });
 }

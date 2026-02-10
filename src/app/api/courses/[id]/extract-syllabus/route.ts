@@ -11,7 +11,7 @@ import { categorizeSyllabusWithAi } from "@/lib/syllabus/categorize-with-ai";
 import { decryptSecret } from "@/lib/secret-crypto";
 
 const CANVAS_BASE =
-  process.env.CANVAS_BASE_URL ?? "https://belmont.instructure.com";
+  process.env.CANVAS_BASE_URL ?? "https://canvas.instructure.com";
 
 /**
  * On-demand syllabus extraction for a course.

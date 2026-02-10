@@ -14,10 +14,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { message, threadId } = body;
+  const body = (await request.json().catch(() => ({}))) as {
+    message?: unknown;
+    history?: unknown;
+  };
+  const message = typeof body.message === "string" ? body.message.trim() : "";
 
-  if (!message || typeof message !== "string") {
+  if (!message) {
     return NextResponse.json(
       { error: "message required" },
       { status: 400 }
@@ -55,57 +58,42 @@ export async function POST(request: Request) {
       : "No assignments synced yet. Student can sync Canvas from Dashboard.";
 
   const systemPrompt = buildTutorSystemPrompt(assignmentsContext);
+  const history = Array.isArray(body.history)
+    ? body.history
+        .filter(
+          (
+            item
+          ): item is { role: "user" | "assistant"; content: string } =>
+            !!item &&
+            typeof item === "object" &&
+            ((item as { role?: unknown }).role === "user" ||
+              (item as { role?: unknown }).role === "assistant") &&
+            typeof (item as { content?: unknown }).content === "string" &&
+            (item as { content: string }).content.trim().length > 0
+        )
+        .map((item) => ({
+          role: item.role,
+          content: item.content.trim().slice(0, 2000),
+        }))
+        .slice(-16)
+    : [];
 
-  let thread = threadId
-    ? await prisma.tutorThread.findFirst({
-        where: { id: threadId, userId: session.user.id },
-        include: { messages: { orderBy: { createdAt: "asc" } } },
-      })
-    : null;
-
-  if (!thread) {
-    thread = await prisma.tutorThread.upsert({
-      where: { userId: session.user.id },
-      create: { userId: session.user.id },
-      update: {},
-      include: { messages: { orderBy: { createdAt: "asc" } } },
-    });
-  }
-
-  await prisma.tutorMessage.create({
-    data: { threadId: thread.id, role: "user", content: message },
-  });
-
-  const history = thread.messages.map((m) => ({
-    role: m.role as "user" | "assistant" | "system",
-    content: m.content,
-  }));
   const messages = [
     { role: "system" as const, content: systemPrompt },
     ...history,
-    { role: "user" as const, content: message },
+    { role: "user" as const, content: message.slice(0, 2000) },
   ];
 
   const stream = new ReadableStream({
     async start(controller) {
-      let fullContent = "";
       try {
-        controller.enqueue(
-          new TextEncoder().encode(
-            `data: ${JSON.stringify({ threadId: thread.id })}\n\n`
-          )
-        );
         for await (const chunk of provider.streamChat(messages)) {
-          fullContent += chunk;
           controller.enqueue(
             new TextEncoder().encode(
               `data: ${JSON.stringify({ content: chunk })}\n\n`
             )
           );
         }
-        await prisma.tutorMessage.create({
-          data: { threadId: thread.id, role: "assistant", content: fullContent },
-        });
         controller.enqueue(
           new TextEncoder().encode("data: [DONE]\n\n")
         );

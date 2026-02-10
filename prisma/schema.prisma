@@ -16,7 +16,11 @@ model User {
   emailVerified      DateTime?
   name               String?
   image              String?
+  bio                String?
+  timezone           String?
   password           String? // For credentials auth
+  twoFactorEnabled   Boolean   @default(false)
+  twoFactorSecret    String?
   hasOnboarded       Boolean   @default(false)
   calendarFeedSecret String?   @unique
   createdAt          DateTime  @default(now())

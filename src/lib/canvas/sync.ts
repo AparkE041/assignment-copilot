@@ -14,7 +14,7 @@ import {
 import { encryptSecret } from "@/lib/secret-crypto";
 
 const CANVAS_BASE =
-  process.env.CANVAS_BASE_URL ?? "https://belmont.instructure.com";
+  process.env.CANVAS_BASE_URL ?? "https://canvas.instructure.com";
 
 export interface SyncResult {
   success: boolean;

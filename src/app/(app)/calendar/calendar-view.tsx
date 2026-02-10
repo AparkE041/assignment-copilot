@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, createContext, useContext } from "react";
+import { useCallback, useEffect, useMemo, useState, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
@@ -10,6 +10,7 @@ import { enUS } from "date-fns/locale";
 import Link from "next/link";
 import { Sparkles, CalendarDays, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FormMessage } from "@/components/ui/form-message";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 
@@ -152,26 +153,43 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
   const [view, setView] = useState<View>("week");
   const [date, setDate] = useState(new Date());
   const [events, setEvents] = useState(initialEvents);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEvents(initialEvents);
+  }, [initialEvents]);
 
   /* ---- toggle session complete ---- */
   const toggleComplete = useCallback(
     async (event: CalendarEvent) => {
       const sessionId = event.resource?.sessionId ?? event.id;
       const newCompleted = !event.resource?.completed;
+      setError(null);
 
       // Optimistic update
-      setEvents((prev) =>
-        prev.map((e) =>
+      setEvents((previousEvents) => {
+        const nextEvents = previousEvents.map((e) =>
           e.id === event.id
             ? { ...e, resource: { ...e.resource!, completed: newCompleted } }
-            : e,
-        ),
-      );
+            : e
+        );
 
-      await fetch(`/api/plan/sessions/${sessionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: newCompleted }),
+        void fetch(`/api/plan/sessions/${sessionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ completed: newCompleted }),
+        })
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("Failed to update session status.");
+            }
+          })
+          .catch((err) => {
+            setEvents(previousEvents);
+            setError(err instanceof Error ? err.message : "Failed to update session status.");
+          });
+
+        return nextEvents;
       });
     },
     [],
@@ -184,14 +202,30 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
       const start = typeof args.start === "string" ? new Date(args.start) : args.start;
       const end = typeof args.end === "string" ? new Date(args.end) : args.end;
       const sessionId = e.resource?.sessionId ?? e.id;
-      await fetch(`/api/plan/sessions/${sessionId}`, {
+      setError(null);
+
+      const previousEvents = events;
+      setEvents((prev) =>
+        prev.map((event) =>
+          event.id === e.id
+            ? { ...event, start, end }
+            : event
+        )
+      );
+
+      const res = await fetch(`/api/plan/sessions/${sessionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ startAt: start.toISOString(), endAt: end.toISOString() }),
       });
+      if (!res.ok) {
+        setEvents(previousEvents);
+        setError("Failed to reschedule session.");
+        return;
+      }
       router.refresh();
     },
-    [router],
+    [events, router],
   );
 
   /* ---- click → open assignment ---- */
@@ -249,7 +283,7 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
     return (
       <div className="glass rounded-2xl shadow-apple border-0 overflow-hidden">
         <div className="flex flex-col items-center justify-center py-20 px-6">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500/15 to-pink-500/15 flex items-center justify-center mb-5 shadow-apple">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-sky-500/15 to-blue-600/15 flex items-center justify-center mb-5 shadow-apple">
             <CalendarDays className="w-10 h-10 text-primary" />
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-2 text-center">
@@ -273,9 +307,14 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
   return (
     <ToggleCtx.Provider value={toggleComplete}>
       <div className="glass rounded-2xl shadow-apple overflow-hidden border-0 hover:shadow-apple-lg transition-shadow">
+        {error && (
+          <div className="px-4 pt-4">
+            <FormMessage type="error">{error}</FormMessage>
+          </div>
+        )}
         {/* Legend */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border/50 text-xs text-muted-foreground">
-            <span>Click event to open assignment · Checkbox to mark complete · Drag to reschedule</span>
+            <span>Click event to open assignment, check to complete, drag to reschedule</span>
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-sm bg-primary shrink-0" />

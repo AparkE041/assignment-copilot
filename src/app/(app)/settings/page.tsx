@@ -6,30 +6,95 @@ import { AzureForm } from "./azure-form";
 import { AvailabilityImport } from "./availability-import";
 import { CalendarExport } from "./calendar-export";
 import { DeploymentReadiness } from "./deployment-readiness";
+import { ProfileSettingsForm } from "./profile-settings-form";
+import { PasswordResetForm } from "./password-reset-form";
 
 export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
   let connection = null;
+  let user = null;
   try {
-    connection = await prisma.canvasConnection.findUnique({
-      where: { userId: session.user.id },
-    });
+    [connection, user] = await Promise.all([
+      prisma.canvasConnection.findUnique({
+        where: { userId: session.user.id },
+      }),
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+          email: true,
+          name: true,
+          image: true,
+          bio: true,
+          timezone: true,
+          password: true,
+        },
+      }),
+    ]);
   } catch (err) {
     console.error("Settings page error:", err);
   }
 
   const isConnected = !!connection;
+  const hasPassword = !!user?.password;
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
         <p className="text-muted-foreground mt-1">
-          Deployment checks, Canvas, availability, and calendar export
+          Profile, account security, deployment checks, and integrations
         </p>
       </div>
+
+      <Card className="glass border-0 rounded-2xl shadow-apple hover:shadow-apple-lg transition-shadow">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A8 8 0 1118.88 6.196M15 11a3 3 0 11-6 0 3 3 0 016 0zm6 10a9 9 0 10-18 0h18z" />
+              </svg>
+            </div>
+            Profile
+          </CardTitle>
+          <CardDescription>
+            Personalize your display name, photo URL, timezone, and profile details.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProfileSettingsForm
+            initialProfile={{
+              email: user?.email ?? null,
+              name: user?.name ?? null,
+              image: user?.image ?? null,
+              bio: user?.bio ?? null,
+              timezone: user?.timezone ?? null,
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="glass border-0 rounded-2xl shadow-apple hover:shadow-apple-lg transition-shadow">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-orange-600 flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c1.657 0 3-1.567 3-3.5S13.657 4 12 4s-3 1.567-3 3.5S10.343 11 12 11zm0 0v2m-6 7h12a2 2 0 002-2v-4a8 8 0 10-16 0v4a2 2 0 002 2z" />
+              </svg>
+            </div>
+            Password
+          </CardTitle>
+          <CardDescription>
+            {hasPassword
+              ? "Update your password for email sign-in."
+              : "Set a password if you currently use OAuth sign-in only."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PasswordResetForm hasPassword={hasPassword} />
+        </CardContent>
+      </Card>
 
       <Card className="glass border-0 rounded-2xl shadow-apple hover:shadow-apple-lg transition-shadow">
         <CardHeader>
@@ -58,11 +123,11 @@ export default async function SettingsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            Canvas (Belmont)
+            Canvas
           </CardTitle>
           <CardDescription>
-            Connect with a Personal Access Token. Generate one in Belmont
-            Canvas: Profile → Settings → Approved Integrations → New Access
+            Connect with a Personal Access Token. Generate one in your
+            Canvas account: Profile → Settings → Approved Integrations → New Access
             Token.
           </CardDescription>
         </CardHeader>

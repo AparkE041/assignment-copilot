@@ -4,7 +4,7 @@
  */
 
 const CANVAS_BASE_URL =
-  process.env.CANVAS_BASE_URL ?? "https://belmont.instructure.com";
+  process.env.CANVAS_BASE_URL ?? "https://canvas.instructure.com";
 
 export interface CanvasCourse {
   id: number;

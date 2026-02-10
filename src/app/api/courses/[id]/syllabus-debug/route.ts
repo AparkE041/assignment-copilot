@@ -5,7 +5,7 @@ import { extractSyllabusDiagnostic } from "@/lib/syllabus/extract-from-file";
 import { decryptSecret } from "@/lib/secret-crypto";
 
 const CANVAS_BASE =
-  process.env.CANVAS_BASE_URL ?? "https://belmont.instructure.com";
+  process.env.CANVAS_BASE_URL ?? "https://canvas.instructure.com";
 
 /**
  * Debug endpoint to see what Canvas returns for syllabus extraction.

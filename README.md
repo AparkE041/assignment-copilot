@@ -1,10 +1,10 @@
 # Assignment Copilot
 
-Plan, track, and get AI help on your Belmont assignments. Connects to Canvas LMS, plans work sessions on a calendar, sends email reminders, and provides an AI assistant with integrity controls.
+Plan, track, and get AI help on your coursework. Connects to Canvas LMS, plans work sessions on a calendar, sends email reminders, and provides an AI assistant with integrity controls.
 
 ## Features
 
-- **Canvas integration**: Sync courses and assignments from Belmont Canvas (PAT auth)
+- **Canvas integration**: Sync courses and assignments from your Canvas instance (PAT auth)
 - **Calendar**: Week/month views, auto-plan sessions, drag/drop
 - **Reminders**: Email reminders via Resend (48h, 6h, session start)
 - **Assignment summaries**: Extract deliverables, constraints, rubric highlights

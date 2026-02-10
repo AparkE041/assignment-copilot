@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { differenceInDays } from "date-fns";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getUrgencyInfo } from "@/lib/assignments/urgency";
 
 export async function GET() {
   const session = await auth();
@@ -51,9 +51,8 @@ export async function GET() {
         (a) => a.localState?.status === "in_progress"
       ).length,
       urgent: assignments.filter((a) => {
-        if (!a.dueAt) return false;
-        const daysUntil = differenceInDays(new Date(a.dueAt), new Date());
-        return daysUntil >= 0 && daysUntil <= 3;
+        const urgency = getUrgencyInfo(a.dueAt, a.localState?.status ?? null);
+        return urgency?.isUrgent ?? false;
       }).length,
     };
 

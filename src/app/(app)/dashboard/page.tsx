@@ -15,10 +15,11 @@ import {
   Target,
   Library,
 } from "lucide-react";
-import { format, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { NotificationManager } from "@/components/notification-manager";
 import { FormMessage } from "@/components/ui/form-message";
+import { getUrgencyInfo } from "@/lib/assignments/urgency";
 
 interface DashboardData {
   assignments: Array<{
@@ -44,6 +45,29 @@ interface DashboardData {
     inProgress: number;
     urgent: number;
   };
+}
+
+function getUrgencyLabel(daysUntilDue: number): string {
+  if (daysUntilDue < 0) {
+    const lateDays = Math.abs(daysUntilDue);
+    return lateDays === 1 ? "1 day late" : `${lateDays} days late`;
+  }
+  if (daysUntilDue === 0) return "Today";
+  if (daysUntilDue === 1) return "Tomorrow";
+  return `${daysUntilDue} days`;
+}
+
+function getUrgencyColor(daysUntilDue: number): string {
+  if (daysUntilDue < 0) return "bg-red-600";
+  if (daysUntilDue === 0) return "bg-red-500";
+  if (daysUntilDue === 1) return "bg-orange-500";
+  return "bg-yellow-500";
+}
+
+function getUrgencyTextColor(daysUntilDue: number): string {
+  if (daysUntilDue <= 0) return "text-red-500";
+  if (daysUntilDue === 1) return "text-orange-500";
+  return "text-yellow-600";
 }
 
 export default function DashboardPage() {
@@ -115,11 +139,24 @@ export default function DashboardPage() {
     );
   }
 
-  const urgentAssignments = data?.assignments.filter((a) => {
-    if (!a.dueAt) return false;
-    const daysUntil = differenceInDays(new Date(a.dueAt), new Date());
-    return daysUntil <= 3 && daysUntil >= 0;
-  }) || [];
+  const urgentAssignments =
+    data?.assignments
+      .map((assignment) => {
+        const urgency = getUrgencyInfo(
+          assignment.dueAt,
+          assignment.localState?.status ?? null
+        );
+        return { assignment, urgency };
+      })
+      .filter(
+        (
+          item
+        ): item is {
+          assignment: DashboardData["assignments"][number];
+          urgency: NonNullable<ReturnType<typeof getUrgencyInfo>>;
+        } => Boolean(item.urgency?.isUrgent)
+      )
+      .sort((a, b) => a.urgency.daysUntilDue - b.urgency.daysUntilDue) || [];
 
   const todaySessions = data?.plannedSessions.filter((s) => {
     const sessionDate = new Date(s.startAt);
@@ -306,7 +343,7 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-semibold text-foreground">
                   Urgent Assignments
                 </h2>
-                <p className="text-sm text-muted-foreground">Due within 3 days</p>
+                <p className="text-sm text-muted-foreground">Overdue or due within 3 days</p>
               </div>
             </div>
             <Link
@@ -331,11 +368,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {urgentAssignments.slice(0, 5).map((assignment) => {
-                const daysLeft = assignment.dueAt
-                  ? differenceInDays(new Date(assignment.dueAt), new Date())
-                  : null;
-
+              {urgentAssignments.slice(0, 5).map(({ assignment, urgency }) => {
                 return (
                   <Link
                     key={assignment.id}
@@ -343,13 +376,9 @@ export default function DashboardPage() {
                     className="flex items-center gap-4 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all group"
                   >
                     <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        daysLeft === 0
-                          ? "bg-red-500"
-                          : daysLeft === 1
-                          ? "bg-orange-500"
-                          : "bg-yellow-500"
-                      }`}
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${getUrgencyColor(
+                        urgency.daysUntilDue
+                      )}`}
                     >
                       <Clock className="w-6 h-6 text-white" />
                     </div>
@@ -363,19 +392,11 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p
-                        className={`text-sm font-medium ${
-                          daysLeft === 0
-                            ? "text-red-500"
-                            : daysLeft === 1
-                            ? "text-orange-500"
-                            : "text-yellow-600"
-                        }`}
+                        className={`text-sm font-medium ${getUrgencyTextColor(
+                          urgency.daysUntilDue
+                        )}`}
                       >
-                        {daysLeft === 0
-                          ? "Today"
-                          : daysLeft === 1
-                          ? "Tomorrow"
-                          : `${daysLeft} days`}
+                        {getUrgencyLabel(urgency.daysUntilDue)}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {assignment.dueAt

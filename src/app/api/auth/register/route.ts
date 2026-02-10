@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { encryptSecret, hasEncryptionKeyConfigured } from "@/lib/secret-crypto";
+import { verifyTotpCode } from "@/lib/auth/totp";
 
 export async function POST(req: Request) {
   try {
@@ -26,6 +28,11 @@ export async function POST(req: Request) {
     const rawEmail = typeof body.email === "string" ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
     const name = typeof body.name === "string" ? body.name.trim() || null : null;
+    const twoFactorEnabled = body.twoFactorEnabled !== false;
+    const twoFactorSecret =
+      typeof body.twoFactorSecret === "string" ? body.twoFactorSecret.trim() : "";
+    const twoFactorCode =
+      typeof body.twoFactorCode === "string" ? body.twoFactorCode.trim() : "";
     const email = rawEmail.toLowerCase();
 
     // Validate input
@@ -46,6 +53,48 @@ export async function POST(req: Request) {
     if (password.length < 8) {
       return NextResponse.json(
         { error: "Password must be at least 8 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (!twoFactorEnabled) {
+      return NextResponse.json(
+        { error: "Two-factor authentication is required for new accounts." },
+        { status: 400 }
+      );
+    }
+
+    if (!hasEncryptionKeyConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            "Server is missing ENCRYPTION_KEY. Two-factor setup is temporarily unavailable.",
+        },
+        { status: 503 }
+      );
+    }
+
+    if (!twoFactorSecret || !twoFactorCode) {
+      return NextResponse.json(
+        {
+          error:
+            "Complete two-factor setup: scan the authenticator QR code and enter a 6-digit code.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !verifyTotpCode({
+        secret: twoFactorSecret,
+        code: twoFactorCode,
+      })
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid 2FA code. Check your authenticator app and try again.",
+        },
         { status: 400 }
       );
     }
@@ -75,6 +124,8 @@ export async function POST(req: Request) {
         password: hashedPassword,
         name,
         calendarFeedSecret,
+        twoFactorEnabled: true,
+        twoFactorSecret: encryptSecret(twoFactorSecret),
         hasOnboarded: false,
       },
     });

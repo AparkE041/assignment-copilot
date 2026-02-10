@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -87,9 +88,12 @@ export function AppNav({ user }: AppNavProps) {
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
             <div className="hidden sm:flex items-center gap-3 px-4 py-2 rounded-xl bg-secondary/50">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-medium shadow-lg">
-                {user.name?.[0] || user.email?.[0] || "U"}
-              </div>
+              <Avatar size="default" className="shadow-sm">
+                <AvatarImage src={user.image ?? undefined} alt={user.name ?? "User"} />
+                <AvatarFallback>
+                  {user.name?.[0] || user.email?.[0] || "U"}
+                </AvatarFallback>
+              </Avatar>
               <span className="text-sm text-muted-foreground font-medium">
                 {user.name || user.email}
               </span>

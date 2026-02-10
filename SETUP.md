@@ -198,7 +198,7 @@ You do **not** need a custom domain. Resend’s test domain is enough for login.
    npm run db:seed
    ```
 2. This creates a test user and mock courses/assignments so the app has data without a real Canvas token.
-3. You should see: `Seed completed successfully` and lines like `User: student@belmont.edu`, `Courses: 3`, `Assignments: 5`.
+3. You should see: `Seed completed successfully` and lines like `User: student@example.edu`, `Courses: 3`, `Assignments: 5`.
 
 ---
 
@@ -237,10 +237,10 @@ You can now use:
 
 ---
 
-## Optional: Use real Belmont Canvas data
+## Optional: Use real Canvas data
 
 1. In the app, go to **Settings**.
-2. Log in to [Belmont Canvas](https://belmont.instructure.com) in another tab.
+2. Log in to your school's Canvas in another tab (for example: `https://your-school.instructure.com`).
 3. In Canvas: click your **profile/avatar** (top left) → **Settings** → in the left menu **Approved Integrations** → **New Access Token**.
 4. Purpose: e.g. `Assignment Copilot`. Expiry: optional. Click **Generate token**.
 5. Copy the token.

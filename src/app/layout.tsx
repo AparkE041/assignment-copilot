@@ -4,7 +4,7 @@ import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: "Assignment Copilot",
-  description: "Plan, track, and get AI help on your Belmont assignments",
+  description: "Plan, track, and get AI help on your coursework",
 };
 
 export default function RootLayout({

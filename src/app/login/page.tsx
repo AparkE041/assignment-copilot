@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { signIn } from "next-auth/react";
+import { getProviders, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   GraduationCap,
   Mail,
@@ -15,32 +16,113 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
+  Github,
+  Chrome,
+  ShieldCheck,
+  RefreshCw,
 } from "lucide-react";
+
+type OAuthProvider = {
+  id: string;
+  name: string;
+};
 
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorSecret, setTwoFactorSecret] = useState("");
+  const [twoFactorManualKey, setTwoFactorManualKey] = useState("");
+  const [twoFactorOtpAuthUrl, setTwoFactorOtpAuthUrl] = useState("");
+  const [isPreparingTwoFactor, setIsPreparingTwoFactor] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
   const router = useRouter();
+
+  useEffect(() => {
+    getProviders()
+      .then((providers) => {
+        const list = Object.values(providers ?? {})
+          .filter((provider) => provider.id !== "credentials")
+          .map((provider) => ({ id: provider.id, name: provider.name }));
+        setOauthProviders(list);
+      })
+      .catch(() => setOauthProviders([]));
+  }, []);
+
+  const prepareTwoFactorSetup = useCallback(async (emailForSetup: string) => {
+    setIsPreparingTwoFactor(true);
+    try {
+      const res = await fetch("/api/auth/2fa/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailForSetup.trim().toLowerCase() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to generate 2FA setup.");
+      }
+
+      setTwoFactorSecret(typeof data.secret === "string" ? data.secret : "");
+      setTwoFactorManualKey(
+        typeof data.manualEntryKey === "string" ? data.manualEntryKey : ""
+      );
+      setTwoFactorOtpAuthUrl(
+        typeof data.otpauthUrl === "string" ? data.otpauthUrl : ""
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate 2FA setup.");
+      setTwoFactorSecret("");
+      setTwoFactorManualKey("");
+      setTwoFactorOtpAuthUrl("");
+    } finally {
+      setIsPreparingTwoFactor(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isSignUp && !twoFactorSecret && !isPreparingTwoFactor) {
+      void prepareTwoFactorSetup(email);
+    }
+  }, [email, isPreparingTwoFactor, isSignUp, prepareTwoFactorSetup, twoFactorSecret]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     setSuccess(null);
+    const normalizedTwoFactorCode = twoFactorCode.replace(/\D/g, "").slice(0, 6);
 
     if (isSignUp) {
+      if (!twoFactorSecret) {
+        setError("2FA setup is not ready. Please regenerate and try again.");
+        setIsLoading(false);
+        return;
+      }
+      if (normalizedTwoFactorCode.length !== 6) {
+        setError("Enter the 6-digit code from your authenticator app.");
+        setIsLoading(false);
+        return;
+      }
+
       // Register new user
       try {
         const res = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, name }),
+          body: JSON.stringify({
+            email,
+            password,
+            name,
+            twoFactorEnabled: true,
+            twoFactorSecret,
+            twoFactorCode: normalizedTwoFactorCode,
+          }),
         });
 
         const data = await res.json();
@@ -57,6 +139,7 @@ export default function LoginPage() {
         const result = await signIn("credentials", {
           email,
           password,
+          twoFactorCode: normalizedTwoFactorCode,
           redirect: false,
         });
 
@@ -76,19 +159,27 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email,
         password,
+        twoFactorCode: normalizedTwoFactorCode || undefined,
         redirect: false,
       });
 
       setIsLoading(false);
 
       if (result?.error) {
-        setError("Invalid email or password");
+        setError("Invalid email, password, or 2FA code.");
         return;
       }
 
       router.push("/dashboard");
       router.refresh();
     }
+  }
+
+  async function handleOAuthSignIn(providerId: string) {
+    setError(null);
+    setSuccess(null);
+    setTwoFactorCode("");
+    await signIn(providerId, { callbackUrl: "/dashboard" });
   }
 
   return (
@@ -175,6 +266,7 @@ export default function LoginPage() {
                   setIsSignUp(false);
                   setError(null);
                   setSuccess(null);
+                  setTwoFactorCode("");
                 }}
                 className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-200 ${
                   !isSignUp
@@ -190,6 +282,10 @@ export default function LoginPage() {
                   setIsSignUp(true);
                   setError(null);
                   setSuccess(null);
+                  setTwoFactorCode("");
+                  if (!twoFactorSecret) {
+                    void prepareTwoFactorSetup(email);
+                  }
                 }}
                 className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isSignUp
@@ -250,6 +346,52 @@ export default function LoginPage() {
                 )}
               </AnimatePresence>
 
+              {isSignUp && (
+                <div className="rounded-2xl border border-border/70 bg-secondary/30 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-primary mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          2FA Setup (Required)
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Scan the QR code with Google Authenticator, 1Password, Authy, or Apple Passwords.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void prepareTwoFactorSetup(email)}
+                      disabled={isPreparingTwoFactor}
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isPreparingTwoFactor ? "animate-spin" : ""}`} />
+                      Regenerate
+                    </button>
+                  </div>
+
+                  {twoFactorOtpAuthUrl && (
+                    <div className="flex justify-center">
+                      <Image
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(twoFactorOtpAuthUrl)}`}
+                        alt="2FA QR code"
+                        width={180}
+                        height={180}
+                        className="rounded-xl border border-border bg-white p-2"
+                      />
+                    </div>
+                  )}
+
+                  {twoFactorManualKey && (
+                    <p className="text-xs text-muted-foreground break-all">
+                      Manual key:{" "}
+                      <span className="font-mono text-foreground">{twoFactorManualKey}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
                   Email
@@ -260,7 +402,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@belmont.edu"
+                    placeholder="you@example.com"
                     required
                     className="w-full pl-12 pr-4 py-3 rounded-xl border border-border bg-white/50 dark:bg-black/20 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
                   />
@@ -299,6 +441,32 @@ export default function LoginPage() {
                 </p>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  2FA Code {isSignUp ? "(Required)" : "(if enabled)"}
+                </label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={twoFactorCode}
+                    onChange={(e) =>
+                      setTwoFactorCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    placeholder="123456"
+                    required={isSignUp}
+                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-border bg-white/50 dark:bg-black/20 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {isSignUp
+                    ? "Enter the current 6-digit authenticator code to finish signup."
+                    : "Only needed if your account has two-factor authentication enabled."}
+                </p>
+              </div>
+
               {/* Messages */}
               <AnimatePresence>
                 {error && (
@@ -328,7 +496,13 @@ export default function LoginPage() {
               {/* Submit Button */}
               <motion.button
                 type="submit"
-                disabled={isLoading}
+                disabled={
+                  isLoading ||
+                  (isSignUp &&
+                    (isPreparingTwoFactor ||
+                      !twoFactorSecret ||
+                      twoFactorCode.replace(/\D/g, "").length !== 6))
+                }
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="w-full py-3.5 px-4 rounded-xl bg-primary text-primary-foreground font-medium shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
@@ -347,6 +521,36 @@ export default function LoginPage() {
                 )}
               </motion.button>
             </form>
+
+            {oauthProviders.length > 0 && (
+              <div className="mt-6">
+                <div className="relative flex items-center justify-center mb-4">
+                  <div className="absolute inset-x-0 h-px bg-border" />
+                  <span className="relative px-3 text-xs uppercase tracking-wide text-muted-foreground bg-[color:var(--glass-background)]">
+                    Or continue with
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {oauthProviders.map((provider) => (
+                    <button
+                      key={provider.id}
+                      type="button"
+                      onClick={() => void handleOAuthSignIn(provider.id)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-border bg-white/40 dark:bg-black/20 py-2.5 text-sm font-medium text-foreground hover:bg-white/70 dark:hover:bg-black/30 transition-colors"
+                    >
+                      {provider.id === "github" ? (
+                        <Github className="w-4 h-4" />
+                      ) : provider.id === "google" ? (
+                        <Chrome className="w-4 h-4" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
+                      Continue with {provider.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Footer */}
             <div className="mt-6 text-center">

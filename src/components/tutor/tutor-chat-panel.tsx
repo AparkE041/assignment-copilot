@@ -12,16 +12,13 @@ interface ChatMessage {
 }
 
 export function TutorChatPanel({
-  initialThreadId,
   initialMessages,
 }: {
-  initialThreadId?: string | null;
   initialMessages: ChatMessage[];
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [threadId, setThreadId] = useState(initialThreadId ?? null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,6 +30,11 @@ export function TutorChatPanel({
     if (!input.trim() || loading) return;
 
     const userMessage = input.trim();
+    const history = messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({ role: m.role, content: m.content }))
+      .slice(-16);
+
     setInput("");
     setMessages((prev) => [
       ...prev,
@@ -44,7 +46,7 @@ export function TutorChatPanel({
       const res = await fetch("/api/tutor/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ threadId, message: userMessage }),
+        body: JSON.stringify({ message: userMessage, history }),
       });
 
       if (!res.ok) {
@@ -81,7 +83,6 @@ export function TutorChatPanel({
             if (data === "[DONE]") continue;
             try {
               const parsed = JSON.parse(data);
-              if (parsed.threadId && !threadId) setThreadId(parsed.threadId);
               if (parsed.content) {
                 assistantContent += parsed.content;
                 setMessages((prev) => {

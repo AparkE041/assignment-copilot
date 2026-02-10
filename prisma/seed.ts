@@ -34,10 +34,10 @@ async function main() {
   const calendarFeedSecret = crypto.randomUUID();
 
   const user = await prisma.user.upsert({
-    where: { email: "student@belmont.edu" },
+    where: { email: "student@example.edu" },
     update: {},
     create: {
-      email: "student@belmont.edu",
+      email: "student@example.edu",
       name: "Test Student",
       password: hashedPassword,
       hasOnboarded: true,

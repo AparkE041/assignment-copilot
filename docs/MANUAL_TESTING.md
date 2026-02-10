@@ -102,7 +102,7 @@ Then open **http://localhost:3000** (or the port shown in the terminal).
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 9.1 | Open **Settings**. | Sections: Canvas (Belmont), Availability (ICS), Calendar Export. |
+| 9.1 | Open **Settings**. | Sections: Profile, Password, Canvas, Availability (ICS), Calendar Export. |
 | 9.2 | Canvas | Enter PAT and save (or disconnect). | Success message or state change. |
 | 9.3 | Availability | Upload an .ics file. | Import succeeds or shows clear error. |
 | 9.4 | Calendar Export | Copy feed URL or “Generate” if available. | URL copies; subscription works in Apple Calendar (or similar). |

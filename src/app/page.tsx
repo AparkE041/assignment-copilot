@@ -289,7 +289,7 @@ export default function LandingPage() {
             <span className="font-medium text-foreground text-sm">Assignment Copilot</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            © 2025 Assignment Copilot. Built for Belmont University students.
+            © 2026 Assignment Copilot. Built for students everywhere.
           </p>
         </div>
       </footer>
