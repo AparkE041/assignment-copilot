@@ -13,6 +13,7 @@ import { AutoPlanButton } from "./auto-plan-button";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Calendar, Settings, Clock3, ListChecks, Timer, TrendingUp } from "lucide-react";
+import { normalizeAvailabilityBlocksForPlanning } from "@/lib/availability/normalize-for-planning";
 
 type PlannedSessionRow = Prisma.PlannedSessionGetPayload<{
   include: {
@@ -30,12 +31,18 @@ export default async function CalendarPage() {
 
   let plannedSessions: PlannedSessionRow[] = [];
   let availabilityBlocks: AvailabilityBlockRow[] = [];
+  let user: { timezone: string | null } | null = null;
   try {
     const now = new Date();
     const availabilityEnd = new Date(now);
     availabilityEnd.setDate(availabilityEnd.getDate() + 90);
 
-    [plannedSessions, availabilityBlocks] = await Promise.all([
+    const userPromise = prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { timezone: true },
+    });
+
+    [plannedSessions, availabilityBlocks, user] = await Promise.all([
       prisma.plannedSession.findMany({
         where: { userId: session.user.id },
         include: {
@@ -54,7 +61,21 @@ export default async function CalendarPage() {
         select: { id: true, startAt: true, endAt: true, source: true },
         orderBy: { startAt: "asc" },
       }),
+      userPromise,
     ]);
+
+    availabilityBlocks = normalizeAvailabilityBlocksForPlanning(
+      availabilityBlocks.map((block) => ({
+        startAt: block.startAt,
+        endAt: block.endAt,
+      })),
+      { timeZone: user?.timezone ?? undefined },
+    ).map((block, index) => ({
+      id: `normalized-${index}`,
+      startAt: block.startAt,
+      endAt: block.endAt,
+      source: "normalized",
+    }));
   } catch (err) {
     console.error("Calendar page error:", err);
     plannedSessions = [];

@@ -18,10 +18,13 @@ export function AutoPlanButton() {
     setLoading(true);
     setMessage(null);
     try {
+      const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const res = await fetch("/api/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          timeZone: browserTimeZone,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
