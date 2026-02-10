@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "password" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "hasOnboarded" BOOLEAN DEFAULT false;
