@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { parseIcs } from "@/lib/ics/parser";
 
+const ICS_UPLOAD_SOURCES = ["ics", "ics_upload"];
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -20,13 +22,15 @@ export async function POST(request: Request) {
   }
 
   const text = await file.text();
-  const events = parseIcs(text);
+  const events = parseIcs(text).filter(
+    (event) => event.end instanceof Date && event.start instanceof Date && event.end > event.start,
+  );
 
   const userId = session.user.id;
 
   // Delete existing ICS blocks for this user
   await prisma.availabilityBlock.deleteMany({
-    where: { userId, source: "ics" },
+    where: { userId, source: { in: ICS_UPLOAD_SOURCES } },
   });
 
   const created = await prisma.availabilityBlock.createManyAndReturn({
@@ -34,7 +38,7 @@ export async function POST(request: Request) {
       userId,
       startAt: e.start,
       endAt: e.end,
-      source: "ics",
+      source: "ics_upload",
     })),
   });
 

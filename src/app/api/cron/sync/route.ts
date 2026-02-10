@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/secret-crypto";
+import { syncAvailabilitySubscription } from "@/lib/availability/subscriptions";
 
 // Vercel Cron calls this hourly. Sync Canvas for all connected users.
 export async function GET(request: Request) {
@@ -16,15 +17,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const connections = await prisma.canvasConnection.findMany();
+  const [connections, availabilitySubscriptions] = await Promise.all([
+    prisma.canvasConnection.findMany(),
+    prisma.availabilitySubscription.findMany({
+      select: { id: true, userId: true },
+    }),
+  ]);
   const { syncCanvas } = await import("@/lib/canvas/sync");
 
-  const results = [];
+  const canvasResults = [];
   for (const conn of connections) {
     try {
       const token = decryptSecret(conn.accessToken)?.trim();
       if (!token) {
-        results.push({
+        canvasResults.push({
           userId: conn.userId,
           success: false,
           error: "Missing or unreadable Canvas token",
@@ -32,9 +38,9 @@ export async function GET(request: Request) {
         continue;
       }
       const result = await syncCanvas(conn.userId, token);
-      results.push({ userId: conn.userId, ...result });
+      canvasResults.push({ userId: conn.userId, ...result });
     } catch (err) {
-      results.push({
+      canvasResults.push({
         userId: conn.userId,
         success: false,
         error: err instanceof Error ? err.message : "Unknown error",
@@ -42,5 +48,29 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, results });
+  const availabilityResults = [];
+  for (const subscription of availabilitySubscriptions) {
+    try {
+      const { imported } = await syncAvailabilitySubscription(subscription.id);
+      availabilityResults.push({
+        subscriptionId: subscription.id,
+        userId: subscription.userId,
+        success: true,
+        imported,
+      });
+    } catch (err) {
+      availabilityResults.push({
+        subscriptionId: subscription.id,
+        userId: subscription.userId,
+        success: false,
+        error: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    canvasResults,
+    availabilityResults,
+  });
 }

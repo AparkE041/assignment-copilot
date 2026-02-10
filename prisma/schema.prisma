@@ -37,6 +37,7 @@ model User {
   chatThreads        ChatThread[]
   tutorThreads       TutorThread[]
   availabilityBlocks AvailabilityBlock[]
+  availabilitySubscriptions AvailabilitySubscription[]
   syncLogs           SyncLog[]
 }
 
@@ -195,6 +196,22 @@ model AvailabilityBlock {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AvailabilitySubscription {
+  id              String    @id @default(cuid())
+  userId          String
+  name            String?
+  feedUrl         String // Encrypted at rest
+  lastSyncedAt    DateTime?
+  lastSyncStatus  String? // success | failed
+  lastSyncMessage String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // --- Reminders ---
