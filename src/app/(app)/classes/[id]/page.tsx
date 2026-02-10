@@ -14,6 +14,7 @@ import { ExtractSyllabusButton } from "@/components/syllabus/extract-syllabus-bu
 import { CategorizeSyllabusButton } from "@/components/syllabus/categorize-syllabus-button";
 import { SyllabusDashboard } from "@/components/syllabus/syllabus-dashboard";
 import { SanitizedHtml } from "@/components/sanitized-html";
+import { getEffectiveAssignmentStatus } from "@/lib/assignments/completion";
 
 export default async function ClassDetailPage({
   params,
@@ -46,6 +47,15 @@ export default async function ClassDetailPage({
   const syllabusHtml =
     typeof raw?.syllabus_body === "string" ? raw.syllabus_body : null;
   const syllabusFromFile = course.syllabusExtractedText;
+  const courseAssignments = course.assignments.map((assignment) => ({
+    ...assignment,
+    effectiveStatus: getEffectiveAssignmentStatus({
+      localStatus: assignment.localState?.status ?? null,
+      score: assignment.score,
+      grade: assignment.grade,
+      points: assignment.points,
+    }),
+  }));
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -65,8 +75,8 @@ export default async function ClassDetailPage({
             <h1 className="text-3xl font-bold text-foreground">{course.name}</h1>
             <div className="flex flex-wrap items-center gap-3 mt-1">
               <p className="text-muted-foreground">
-                {course.assignments.length} assignment
-                {course.assignments.length !== 1 ? "s" : ""}
+              {course.assignments.length} assignment
+              {course.assignments.length !== 1 ? "s" : ""}
               </p>
               {course.currentGrade && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-green-500/10 text-green-700 dark:text-green-400 text-sm font-semibold">
@@ -167,7 +177,7 @@ export default async function ClassDetailPage({
           </div>
         ) : (
           <ul className="space-y-3">
-            {course.assignments.map((a) => (
+            {courseAssignments.map((a) => (
               <li key={a.id}>
                 <Link
                   href={`/assignments/${a.id}`}
@@ -184,11 +194,11 @@ export default async function ClassDetailPage({
                       {a.dueAt
                         ? format(new Date(a.dueAt), "MMM d, yyyy")
                         : "No due date"}
-                      {a.localState?.status && (
+                      {a.effectiveStatus && (
                         <>
                           <span>·</span>
                           <span className="capitalize">
-                            {a.localState.status.replace("_", " ")}
+                            {a.effectiveStatus.replace("_", " ")}
                           </span>
                         </>
                       )}

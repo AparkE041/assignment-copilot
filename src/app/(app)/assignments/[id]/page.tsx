@@ -30,6 +30,7 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { AssignmentStatusSelect } from "@/components/assignment/assignment-status-select";
 import { Button } from "@/components/ui/button";
 import { SanitizedHtml } from "@/components/sanitized-html";
+import { getEffectiveAssignmentStatus } from "@/lib/assignments/completion";
 
 export default async function AssignmentDetailPage({
   params,
@@ -69,6 +70,12 @@ export default async function AssignmentDetailPage({
 
   const chatThread = assignment.chatThreads[0] ?? null;
   const summary = await getAssignmentSummary(assignment);
+  const effectiveStatus = getEffectiveAssignmentStatus({
+    localStatus: assignment.localState?.status ?? null,
+    score: assignment.score,
+    grade: assignment.grade,
+    points: assignment.points,
+  });
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -123,7 +130,7 @@ export default async function AssignmentDetailPage({
           </div>
           <AssignmentStatusSelect
             assignmentId={assignment.id}
-            currentStatus={assignment.localState?.status ?? "not_started"}
+            currentStatus={effectiveStatus}
           />
         </div>
 

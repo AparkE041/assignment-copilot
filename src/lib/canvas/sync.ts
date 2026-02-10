@@ -12,6 +12,10 @@ import {
   extractSyllabusFromCourseFiles,
 } from "@/lib/syllabus/extract-from-file";
 import { encryptSecret } from "@/lib/secret-crypto";
+import {
+  isZeroScoreWithPositivePoints,
+  shouldAutoCompleteFromGrade,
+} from "@/lib/assignments/completion";
 
 const CANVAS_BASE =
   process.env.CANVAS_BASE_URL ?? "https://canvas.instructure.com";
@@ -132,6 +136,13 @@ export async function syncCanvas(
         const submission = (a as Record<string, unknown>).submission as
           | { score?: number | null; grade?: string | null }
           | undefined;
+        const gradeInput = {
+          score: submission?.score ?? null,
+          grade: submission?.grade ?? null,
+          points: a.points_possible ?? null,
+        };
+        const autoCompleteByGrade = shouldAutoCompleteFromGrade(gradeInput);
+        const zeroWithPoints = isZeroScoreWithPositivePoints(gradeInput);
 
         const assignData = {
           courseId: course.id,
@@ -159,10 +170,27 @@ export async function syncCanvas(
             await prisma.assignmentLocalState.create({
               data: {
                 assignmentId: existingAssign.id,
-                status: "not_started",
+                status: autoCompleteByGrade
+                  ? "done"
+                  : zeroWithPoints
+                    ? "in_progress"
+                    : "not_started",
                 estimatedEffortMinutes: 60,
               },
             });
+          } else {
+            const currentStatus = existingAssign.localState.status;
+            if (autoCompleteByGrade && currentStatus !== "done") {
+              await prisma.assignmentLocalState.update({
+                where: { id: existingAssign.localState.id },
+                data: { status: "done" },
+              });
+            } else if (zeroWithPoints && currentStatus === "done") {
+              await prisma.assignmentLocalState.update({
+                where: { id: existingAssign.localState.id },
+                data: { status: "in_progress" },
+              });
+            }
           }
         } else {
           const created = await prisma.assignment.create({
@@ -173,7 +201,11 @@ export async function syncCanvas(
           await prisma.assignmentLocalState.create({
             data: {
               assignmentId: created.id,
-              status: "not_started",
+              status: autoCompleteByGrade
+                ? "done"
+                : zeroWithPoints
+                  ? "in_progress"
+                  : "not_started",
               estimatedEffortMinutes: 60,
             },
           });
