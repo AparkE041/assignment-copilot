@@ -8,7 +8,9 @@ export default async function ClassesPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const courses = await prisma.course.findMany({
+  let courses;
+  try {
+    courses = await prisma.course.findMany({
     where: { userId: session.user.id },
     include: {
       _count: { select: { assignments: true } },
@@ -20,6 +22,10 @@ export default async function ClassesPage() {
     },
     orderBy: { name: "asc" },
   });
+  } catch (err) {
+    console.error("Classes page error:", err);
+    courses = [];
+  }
 
   return (
     <div className="max-w-4xl space-y-6">

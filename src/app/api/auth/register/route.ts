@@ -22,12 +22,23 @@ export async function POST(req: Request) {
       );
     }
 
-    const { email, password, name } = await req.json();
+    const body = await req.json();
+    const rawEmail = typeof body.email === "string" ? body.email.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const name = typeof body.name === "string" ? body.name.trim() || null : null;
+    const email = rawEmail.toLowerCase();
 
     // Validate input
     if (!email || !password) {
       return NextResponse.json(
         { error: "Email and password are required" },
+        { status: 400 }
+      );
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json(
+        { error: "Please enter a valid email address" },
         { status: 400 }
       );
     }
@@ -41,7 +52,7 @@ export async function POST(req: Request) {
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email },
     });
 
     if (existingUser) {
@@ -60,9 +71,9 @@ export async function POST(req: Request) {
     // Create user
     const user = await prisma.user.create({
       data: {
-        email: email.toLowerCase(),
+        email,
         password: hashedPassword,
-        name: name || null,
+        name,
         calendarFeedSecret,
         hasOnboarded: false,
       },
@@ -76,8 +87,29 @@ export async function POST(req: Request) {
         name: user.name,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Registration error:", error);
+
+    // Prisma unique constraint (e.g. email or calendarFeedSecret collision)
+    const prismaError = error as { code?: string; meta?: { target?: string[] } };
+    if (prismaError?.code === "P2002") {
+      const target = prismaError.meta?.target as string[] | undefined;
+      if (target?.includes("email")) {
+        return NextResponse.json(
+          { error: "An account with this email already exists" },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Prisma connection / DB errors
+    if (prismaError?.code === "P1001" || prismaError?.code === "P1002") {
+      return NextResponse.json(
+        { error: "Database unavailable. Please try again in a moment." },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to create account. Please try again." },
       { status: 500 }

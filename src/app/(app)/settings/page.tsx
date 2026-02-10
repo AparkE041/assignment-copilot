@@ -10,9 +10,14 @@ export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const connection = await prisma.canvasConnection.findUnique({
-    where: { userId: session.user.id },
-  });
+  let connection = null;
+  try {
+    connection = await prisma.canvasConnection.findUnique({
+      where: { userId: session.user.id },
+    });
+  } catch (err) {
+    console.error("Settings page error:", err);
+  }
 
   const isConnected = !!connection;
 

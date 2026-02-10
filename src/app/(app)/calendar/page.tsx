@@ -10,7 +10,9 @@ export default async function CalendarPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const plannedSessions = await prisma.plannedSession.findMany({
+  let plannedSessions;
+  try {
+    plannedSessions = await prisma.plannedSession.findMany({
     where: { userId: session.user.id },
     include: {
       assignment: {
@@ -19,6 +21,10 @@ export default async function CalendarPage() {
     },
     orderBy: { startAt: "asc" },
   });
+  } catch (err) {
+    console.error("Calendar page error:", err);
+    plannedSessions = [];
+  }
 
   const events = plannedSessions.map((ps) => ({
     id: ps.id,

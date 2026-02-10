@@ -40,24 +40,30 @@ export default async function AssignmentDetailPage({
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const assignment = await prisma.assignment.findFirst({
-    where: {
-      id,
-      course: { userId: session.user.id },
-    },
-    include: {
-      course: true,
-      localState: true,
-      attachments: true,
-      checklistItems: { orderBy: { order: "asc" } },
-      chatThreads: {
-        where: { userId: session.user.id },
-        take: 1,
-        orderBy: { updatedAt: "desc" },
-        include: { messages: { orderBy: { createdAt: "asc" } } },
+  let assignment;
+  try {
+    assignment = await prisma.assignment.findFirst({
+      where: {
+        id,
+        course: { userId: session.user.id },
       },
-    },
-  });
+      include: {
+        course: true,
+        localState: true,
+        attachments: true,
+        checklistItems: { orderBy: { order: "asc" } },
+        chatThreads: {
+          where: { userId: session.user.id },
+          take: 1,
+          orderBy: { updatedAt: "desc" },
+          include: { messages: { orderBy: { createdAt: "asc" } } },
+        },
+      },
+    });
+  } catch (err) {
+    console.error("Assignment detail error:", err);
+    notFound();
+  }
 
   if (!assignment) notFound();
 

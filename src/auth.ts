@@ -18,36 +18,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-        });
+        try {
+          const email = (credentials.email as string).toLowerCase().trim();
+          const user = await prisma.user.findUnique({
+            where: { email },
+          });
 
-        if (!user || !user.password) {
+          if (!user || !user.password) {
+            return null;
+          }
+
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password as string,
+            user.password
+          );
+
+          if (!isPasswordValid) {
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            hasOnboarded: user.hasOnboarded,
+          };
+        } catch (err) {
+          console.error("Credentials authorize error:", err);
           return null;
         }
-
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
-
-        if (!isPasswordValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          hasOnboarded: user.hasOnboarded,
-        };
       },
     }),
   ],
   pages: {
     signIn: "/login",
     newUser: "/onboarding",
+    error: "/auth-error",
   },
   session: {
     strategy: "jwt",

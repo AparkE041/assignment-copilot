@@ -8,7 +8,13 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  let session;
+  try {
+    session = await auth();
+  } catch (err) {
+    console.error("App layout auth error:", err);
+    redirect("/login");
+  }
 
   if (!session?.user) {
     redirect("/login");
@@ -19,9 +25,17 @@ export default async function AppLayout({
     redirect("/onboarding");
   }
 
+  // Pass only serializable user props to client component (avoids Server Component serialization errors)
+  const user = {
+    id: session.user.id,
+    email: session.user.email ?? null,
+    name: session.user.name ?? null,
+    image: session.user.image ?? null,
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <AppNav user={session.user} />
+      <AppNav user={user} />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 page-transition">
         {children}
       </main>

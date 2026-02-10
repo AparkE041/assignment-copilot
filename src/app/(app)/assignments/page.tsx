@@ -9,7 +9,9 @@ export default async function AssignmentsPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const assignments = await prisma.assignment.findMany({
+  let assignments;
+  try {
+    assignments = await prisma.assignment.findMany({
     where: { course: { userId: session.user.id } },
     include: {
       course: true,
@@ -17,6 +19,10 @@ export default async function AssignmentsPage() {
     },
     orderBy: { dueAt: "asc" },
   });
+  } catch (err) {
+    console.error("Assignments page error:", err);
+    assignments = [];
+  }
 
   return (
     <div className="max-w-4xl space-y-6">

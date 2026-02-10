@@ -24,15 +24,21 @@ export default async function ClassDetailPage({
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const course = await prisma.course.findFirst({
-    where: { id, userId: session.user.id },
-    include: {
-      assignments: {
-        orderBy: [{ dueAt: "asc" }, { createdAt: "asc" }],
-        include: { localState: { select: { status: true } } },
+  let course;
+  try {
+    course = await prisma.course.findFirst({
+      where: { id, userId: session.user.id },
+      include: {
+        assignments: {
+          orderBy: [{ dueAt: "asc" }, { createdAt: "asc" }],
+          include: { localState: { select: { status: true } } },
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    console.error("Class detail error:", err);
+    notFound();
+  }
 
   if (!course) notFound();
 
