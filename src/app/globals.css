@@ -513,8 +513,8 @@
 /* ---- Events ---- */
 .rbc-background-event,
 .rbc-availability-bg {
-  background: color-mix(in srgb, #22d3ee 26%, transparent) !important;
-  border: 1px dashed color-mix(in srgb, #0891b2 60%, transparent) !important;
+  background: color-mix(in srgb, #f97316 22%, transparent) !important;
+  border: 1px dashed color-mix(in srgb, #c2410c 60%, transparent) !important;
   border-radius: 0.5rem !important;
   box-shadow: none !important;
   opacity: 0.85;
@@ -544,9 +544,9 @@
 .rbc-event-label { font-size: 0.6875rem; opacity: 0.85; }
 .rbc-event-content { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rbc-event--availability {
-  background: color-mix(in srgb, #22d3ee 26%, transparent) !important;
-  border: 1px dashed color-mix(in srgb, #0891b2 60%, transparent) !important;
-  color: color-mix(in srgb, var(--foreground) 72%, #0f172a) !important;
+  background: color-mix(in srgb, #f97316 22%, transparent) !important;
+  border: 1px dashed color-mix(in srgb, #c2410c 60%, transparent) !important;
+  color: color-mix(in srgb, var(--foreground) 76%, #7c2d12) !important;
   box-shadow: none;
 }
 .rbc-event--completed {

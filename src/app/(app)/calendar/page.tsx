@@ -13,7 +13,7 @@ import { AutoPlanButton } from "./auto-plan-button";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Calendar, Settings, Clock3, ListChecks, Timer, TrendingUp } from "lucide-react";
-import { normalizeAvailabilityBlocksForPlanning } from "@/lib/availability/normalize-for-planning";
+import { isBusyCalendarSource } from "@/lib/availability/derive-free-windows";
 
 type PlannedSessionRow = Prisma.PlannedSessionGetPayload<{
   include: {
@@ -31,18 +31,12 @@ export default async function CalendarPage() {
 
   let plannedSessions: PlannedSessionRow[] = [];
   let availabilityBlocks: AvailabilityBlockRow[] = [];
-  let user: { timezone: string | null } | null = null;
   try {
     const now = new Date();
     const availabilityEnd = new Date(now);
     availabilityEnd.setDate(availabilityEnd.getDate() + 90);
 
-    const userPromise = prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { timezone: true },
-    });
-
-    [plannedSessions, availabilityBlocks, user] = await Promise.all([
+    [plannedSessions, availabilityBlocks] = await Promise.all([
       prisma.plannedSession.findMany({
         where: { userId: session.user.id },
         include: {
@@ -61,21 +55,7 @@ export default async function CalendarPage() {
         select: { id: true, startAt: true, endAt: true, source: true },
         orderBy: { startAt: "asc" },
       }),
-      userPromise,
     ]);
-
-    availabilityBlocks = normalizeAvailabilityBlocksForPlanning(
-      availabilityBlocks.map((block) => ({
-        startAt: block.startAt,
-        endAt: block.endAt,
-      })),
-      { timeZone: user?.timezone ?? undefined },
-    ).map((block, index) => ({
-      id: `normalized-${index}`,
-      startAt: block.startAt,
-      endAt: block.endAt,
-      source: "normalized",
-    }));
   } catch (err) {
     console.error("Calendar page error:", err);
     plannedSessions = [];
@@ -96,9 +76,13 @@ export default async function CalendarPage() {
     },
   }));
 
-  const availabilityEvents = availabilityBlocks.map((block) => ({
+  const busyBlocks = availabilityBlocks.filter((block) =>
+    isBusyCalendarSource(block.source),
+  );
+
+  const availabilityEvents = busyBlocks.map((block) => ({
     id: `availability-${block.id}`,
-    title: "Available",
+    title: "Busy",
     start: block.startAt,
     end: block.endAt,
     resource: {
@@ -127,8 +111,8 @@ export default async function CalendarPage() {
   const upcomingSessions = plannedSessions
     .filter((session) => session.startAt >= now && !session.completed)
     .slice(0, 4);
-  const availabilityHoursWeek =
-    availabilityBlocks.reduce(
+  const busyHoursHorizon =
+    busyBlocks.reduce(
       (total, block) => total + differenceInMinutes(block.endAt, block.startAt),
       0
     ) / 60;
@@ -185,11 +169,11 @@ export default async function CalendarPage() {
           </p>
         </div>
         <div className="glass rounded-2xl p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Availability</p>
-          <p className="mt-2 text-2xl font-bold text-foreground">{availabilityHoursWeek.toFixed(1)}h</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Busy Time</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{busyHoursHorizon.toFixed(1)}h</p>
           <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
             <Clock3 className="w-3.5 h-3.5" />
-            In next 90 days
+            Imported conflicts (90d)
           </p>
         </div>
       </div>

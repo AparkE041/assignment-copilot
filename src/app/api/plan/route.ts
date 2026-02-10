@@ -3,6 +3,10 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { autoPlan } from "@/lib/planning/auto-plan";
 import { normalizeAvailabilityBlocksForPlanning } from "@/lib/availability/normalize-for-planning";
+import {
+  isBusyCalendarSource,
+  subtractBusyFromAvailability,
+} from "@/lib/availability/derive-free-windows";
 
 /** Default availability when user has none: weekdays 9am–5pm for the next 45 days. */
 function getDefaultAvailability(): { startAt: Date; endAt: Date }[] {
@@ -75,12 +79,34 @@ export async function POST(request: Request) {
     priority: a.localState?.priority ?? 0,
   }));
 
-  let availability = normalizeAvailabilityBlocksForPlanning(
-    availabilityBlocks.map((b) => ({ startAt: b.startAt, endAt: b.endAt })),
+  const now = new Date();
+  const busyBlocks = availabilityBlocks
+    .filter((block) => isBusyCalendarSource(block.source))
+    .map((block) => ({ startAt: block.startAt, endAt: block.endAt }))
+    .filter((block) => block.endAt > now);
+
+  const explicitAvailabilityBlocks = availabilityBlocks
+    .filter((block) => !isBusyCalendarSource(block.source))
+    .map((block) => ({ startAt: block.startAt, endAt: block.endAt }))
+    .filter((block) => block.endAt > now);
+
+  const baseAvailabilityRaw =
+    explicitAvailabilityBlocks.length > 0
+      ? explicitAvailabilityBlocks
+      : getDefaultAvailability();
+  const baseAvailability = normalizeAvailabilityBlocksForPlanning(
+    baseAvailabilityRaw,
     { timeZone: effectiveTimeZone ?? undefined },
-  ).filter((b) => b.endAt > new Date()); // only future blocks
+  );
+
+  let availability = subtractBusyFromAvailability(baseAvailability, busyBlocks, {
+    minFreeMinutes: 30,
+  });
   if (availability.length === 0) {
-    availability = getDefaultAvailability();
+    // If user has explicit availability and it's fully blocked, keep empty and return no sessions.
+    if (explicitAvailabilityBlocks.length === 0 && busyBlocks.length === 0) {
+      availability = getDefaultAvailability();
+    }
   }
 
   const sessions = autoPlan(assignmentForPlan, availability);

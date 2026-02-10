@@ -173,7 +173,7 @@ export default async function SettingsPage() {
             Availability Calendars
           </CardTitle>
           <CardDescription>
-            Import a one-time ICS file or subscribe to live calendar feeds for ongoing availability sync.
+            Import a one-time ICS file or subscribe to live feeds to block busy times during auto-planning.
           </CardDescription>
         </CardHeader>
         <CardContent>

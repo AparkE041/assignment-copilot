@@ -112,7 +112,7 @@ export function AvailabilityImport() {
       const imported = data.imported ?? 0;
       setUploadMessage({
         type: "success",
-        text: `Imported ${imported} availability block${imported === 1 ? "" : "s"} from file.`,
+        text: `Imported ${imported} busy block${imported === 1 ? "" : "s"} from file.`,
       });
       fileInput.value = "";
     } catch (err) {
@@ -168,7 +168,7 @@ export function AvailabilityImport() {
         const imported = data.imported ?? 0;
         setSubscriptionMessage({
           type: "success",
-          text: `Feed connected and imported ${imported} availability block${imported === 1 ? "" : "s"}.`,
+          text: `Feed connected and imported ${imported} busy block${imported === 1 ? "" : "s"}.`,
         });
       }
     } catch (err) {
@@ -204,7 +204,7 @@ export function AvailabilityImport() {
       const imported = data.imported ?? 0;
       setSubscriptionMessage({
         type: "success",
-        text: `Synced calendar feed and imported ${imported} availability block${imported === 1 ? "" : "s"}.`,
+        text: `Synced calendar feed and imported ${imported} busy block${imported === 1 ? "" : "s"}.`,
       });
     } catch (err) {
       setSubscriptionMessage({

@@ -278,7 +278,7 @@ export function CalendarView({
     (event: CalendarEvent) => {
       if (event.resource?.kind === "availability") {
         const time = `${format(event.start, "h:mm a")} – ${format(event.end, "h:mm a")}`;
-        return `Available\n${time}`;
+        return `Busy\n${time}`;
       }
       const course = event.resource?.courseName ?? "";
       const time = `${format(event.start, "h:mm a")} – ${format(event.end, "h:mm a")}`;
@@ -351,7 +351,7 @@ export function CalendarView({
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-sm bg-cyan-400/80 shrink-0" />
-                Availability
+                Busy
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-sm bg-green-500 shrink-0" />
