@@ -22,11 +22,17 @@ export async function POST(request: Request) {
   }
 
   const text = await file.text();
-  const events = parseIcs(text).filter(
+  const userId = session.user.id;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { timezone: true },
+  });
+
+  const events = parseIcs(text, {
+    defaultTimeZone: user?.timezone ?? undefined,
+  }).filter(
     (event) => event.end instanceof Date && event.start instanceof Date && event.end > event.start,
   );
-
-  const userId = session.user.id;
 
   // Delete existing ICS blocks for this user
   await prisma.availabilityBlock.deleteMany({

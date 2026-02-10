@@ -5,7 +5,6 @@ import {
   differenceInMinutes,
   endOfWeek,
   format,
-  isSameDay,
   isWithinInterval,
   startOfWeek,
 } from "date-fns";
@@ -21,24 +20,45 @@ type PlannedSessionRow = Prisma.PlannedSessionGetPayload<{
   };
 }>;
 
+type AvailabilityBlockRow = Prisma.AvailabilityBlockGetPayload<{
+  select: { id: true; startAt: true; endAt: true; source: true };
+}>;
+
 export default async function CalendarPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
   let plannedSessions: PlannedSessionRow[] = [];
+  let availabilityBlocks: AvailabilityBlockRow[] = [];
   try {
-    plannedSessions = await prisma.plannedSession.findMany({
-    where: { userId: session.user.id },
-    include: {
-      assignment: {
-        select: { id: true, title: true, course: { select: { name: true } } },
-      },
-    },
-    orderBy: { startAt: "asc" },
-  });
+    const now = new Date();
+    const availabilityEnd = new Date(now);
+    availabilityEnd.setDate(availabilityEnd.getDate() + 90);
+
+    [plannedSessions, availabilityBlocks] = await Promise.all([
+      prisma.plannedSession.findMany({
+        where: { userId: session.user.id },
+        include: {
+          assignment: {
+            select: { id: true, title: true, course: { select: { name: true } } },
+          },
+        },
+        orderBy: { startAt: "asc" },
+      }),
+      prisma.availabilityBlock.findMany({
+        where: {
+          userId: session.user.id,
+          endAt: { gt: now },
+          startAt: { lt: availabilityEnd },
+        },
+        select: { id: true, startAt: true, endAt: true, source: true },
+        orderBy: { startAt: "asc" },
+      }),
+    ]);
   } catch (err) {
     console.error("Calendar page error:", err);
     plannedSessions = [];
+    availabilityBlocks = [];
   }
 
   const events = plannedSessions.map((ps) => ({
@@ -47,10 +67,22 @@ export default async function CalendarPage() {
     start: ps.startAt,
     end: ps.endAt,
     resource: {
+      kind: "session" as const,
       sessionId: ps.id,
       assignmentId: ps.assignment.id,
       courseName: ps.assignment.course.name,
       completed: ps.completed,
+    },
+  }));
+
+  const availabilityEvents = availabilityBlocks.map((block) => ({
+    id: `availability-${block.id}`,
+    title: "Available",
+    start: block.startAt,
+    end: block.endAt,
+    resource: {
+      kind: "availability" as const,
+      source: block.source,
     },
   }));
 
@@ -61,7 +93,6 @@ export default async function CalendarPage() {
   const weekSessions = plannedSessions.filter((session) =>
     isWithinInterval(session.startAt, { start: weekStart, end: weekEnd })
   );
-  const todaySessions = plannedSessions.filter((session) => isSameDay(session.startAt, now));
   const completedWeek = weekSessions.filter((session) => session.completed).length;
   const completionRate =
     weekSessions.length > 0
@@ -75,6 +106,11 @@ export default async function CalendarPage() {
   const upcomingSessions = plannedSessions
     .filter((session) => session.startAt >= now && !session.completed)
     .slice(0, 4);
+  const availabilityHoursWeek =
+    availabilityBlocks.reduce(
+      (total, block) => total + differenceInMinutes(block.endAt, block.startAt),
+      0
+    ) / 60;
 
   return (
     <div className="space-y-6">
@@ -128,11 +164,11 @@ export default async function CalendarPage() {
           </p>
         </div>
         <div className="glass rounded-2xl p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Today</p>
-          <p className="mt-2 text-2xl font-bold text-foreground">{todaySessions.length}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Availability</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{availabilityHoursWeek.toFixed(1)}h</p>
           <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
             <Clock3 className="w-3.5 h-3.5" />
-            Sessions scheduled
+            In next 90 days
           </p>
         </div>
       </div>
@@ -169,7 +205,7 @@ export default async function CalendarPage() {
       )}
 
       {/* Calendar */}
-      <CalendarView events={events} />
+      <CalendarView events={events} availabilityEvents={availabilityEvents} />
     </div>
   );
 }

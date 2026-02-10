@@ -31,11 +31,14 @@ export interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
+  allDay?: boolean;
   resource?: {
-    sessionId: string;
-    assignmentId: string;
-    courseName: string;
-    completed: boolean;
+    kind: "session" | "availability";
+    sessionId?: string;
+    assignmentId?: string;
+    courseName?: string;
+    completed?: boolean;
+    source?: string;
   };
 }
 
@@ -49,7 +52,12 @@ const ToggleCtx = createContext<(event: CalendarEvent) => void>(() => {});
 /* ------------------------------------------------------------------ */
 function EventComponent({ event }: { event: CalendarEvent }) {
   const toggle = useContext(ToggleCtx);
+  const isSession = event.resource?.kind === "session";
   const completed = event.resource?.completed;
+
+  if (!isSession) {
+    return <span className="truncate">{event.title}</span>;
+  }
 
   return (
     <div className="flex items-center gap-1 w-full min-w-0">
@@ -148,7 +156,13 @@ function CalendarToolbar({
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
-export function CalendarView({ events: initialEvents }: { events: CalendarEvent[] }) {
+export function CalendarView({
+  events: initialEvents,
+  availabilityEvents = [],
+}: {
+  events: CalendarEvent[];
+  availabilityEvents?: CalendarEvent[];
+}) {
   const router = useRouter();
   const [view, setView] = useState<View>("week");
   const [date, setDate] = useState(new Date());
@@ -162,6 +176,9 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
   /* ---- toggle session complete ---- */
   const toggleComplete = useCallback(
     async (event: CalendarEvent) => {
+      if (!event.resource || event.resource.kind !== "session" || !event.resource.sessionId) {
+        return;
+      }
       const sessionId = event.resource?.sessionId ?? event.id;
       const newCompleted = !event.resource?.completed;
       setError(null);
@@ -199,6 +216,7 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
   const handleEventDrop = useCallback(
     async (args: { event: CalendarEvent; start: Date | string; end: Date | string }) => {
       const e = args.event;
+      if (!e.resource || e.resource.kind !== "session" || !e.resource.sessionId) return;
       const start = typeof args.start === "string" ? new Date(args.start) : args.start;
       const end = typeof args.end === "string" ? new Date(args.end) : args.end;
       const sessionId = e.resource?.sessionId ?? e.id;
@@ -231,6 +249,7 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
   /* ---- click → open assignment ---- */
   const handleSelectEvent = useCallback(
     (event: CalendarEvent) => {
+      if (!event.resource || event.resource.kind !== "session") return;
       const assignmentId = event.resource?.assignmentId;
       if (assignmentId) {
         router.push(`/assignments/${assignmentId}`);
@@ -241,6 +260,12 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
 
   /* ---- custom event styling ---- */
   const eventPropGetter = useCallback((event: CalendarEvent) => {
+    if (event.resource?.kind !== "session") {
+      return {
+        className: "rbc-event--availability",
+        style: { cursor: "default" } as React.CSSProperties,
+      };
+    }
     const completed = event.resource?.completed;
     return {
       className: completed ? "rbc-event--completed" : "",
@@ -251,6 +276,10 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
   /* ---- custom tooltip ---- */
   const tooltipAccessor = useCallback(
     (event: CalendarEvent) => {
+      if (event.resource?.kind === "availability") {
+        const time = `${format(event.start, "h:mm a")} – ${format(event.end, "h:mm a")}`;
+        return `Available\n${time}`;
+      }
       const course = event.resource?.courseName ?? "";
       const time = `${format(event.start, "h:mm a")} – ${format(event.end, "h:mm a")}`;
       const status = event.resource?.completed ? "Completed" : "Scheduled";
@@ -279,7 +308,7 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
   );
 
   /* ---- empty state ---- */
-  if (events.length === 0) {
+  if (events.length === 0 && availabilityEvents.length === 0) {
     return (
       <div className="glass rounded-2xl shadow-apple border-0 overflow-hidden">
         <div className="flex flex-col items-center justify-center py-20 px-6">
@@ -321,6 +350,10 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
                 Scheduled
               </span>
               <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm bg-cyan-400/80 shrink-0" />
+                Availability
+              </span>
+              <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-sm bg-green-500 shrink-0" />
                 Completed
               </span>
@@ -332,6 +365,7 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
           <DnDCalendar
             localizer={localizer}
             events={events}
+            backgroundEvents={availabilityEvents}
             startAccessor="start"
             endAccessor="end"
             view={view}
@@ -341,6 +375,9 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
             onEventDrop={handleEventDrop}
             onSelectEvent={handleSelectEvent}
             eventPropGetter={eventPropGetter}
+            backgroundEventPropGetter={() => ({
+              className: "rbc-availability-bg",
+            })}
             tooltipAccessor={tooltipAccessor}
             formats={formats}
             components={components}
@@ -349,7 +386,7 @@ export function CalendarView({ events: initialEvents }: { events: CalendarEvent[
             step={30}
             timeslots={2}
             scrollToTime={new Date(1970, 0, 1, 8, 0, 0)}
-            draggableAccessor={() => true}
+            draggableAccessor={(event: CalendarEvent) => event.resource?.kind === "session"}
             resizable
             popup
             selectable={false}
