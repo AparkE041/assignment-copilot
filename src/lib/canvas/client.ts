@@ -6,6 +6,9 @@
 const CANVAS_BASE_URL =
   process.env.CANVAS_BASE_URL ?? "https://canvas.instructure.com";
 
+const MAX_PAGINATION_PAGES = 50;
+const DEFAULT_PER_PAGE = 100;
+
 export interface CanvasCourse {
   id: number;
   name: string;
@@ -28,6 +31,62 @@ export interface CanvasSubmissionType {
   [key: string]: unknown;
 }
 
+function getAuthHeaders(token: string): HeadersInit {
+  return { Authorization: `Bearer ${token}` };
+}
+
+/**
+ * Canvas paginates responses and exposes next links in the Link header.
+ * Example:
+ * <https://.../api/v1/courses?page=2&per_page=100>; rel="next"
+ */
+function getNextLink(linkHeader: string | null): string | null {
+  if (!linkHeader) return null;
+  const parts = linkHeader.split(",");
+  for (const part of parts) {
+    const [rawUrl, rawRel] = part.split(";");
+    if (!rawUrl || !rawRel) continue;
+    if (!rawRel.includes('rel="next"')) continue;
+    const trimmed = rawUrl.trim();
+    if (!trimmed.startsWith("<") || !trimmed.endsWith(">")) continue;
+    return trimmed.slice(1, -1);
+  }
+  return null;
+}
+
+async function fetchCanvasPaginated<T>(
+  initialUrl: string,
+  token: string
+): Promise<T[]> {
+  const items: T[] = [];
+  let nextUrl: string | null = initialUrl;
+  let pages = 0;
+
+  while (nextUrl) {
+    pages++;
+    if (pages > MAX_PAGINATION_PAGES) {
+      throw new Error(
+        `Canvas pagination exceeded ${MAX_PAGINATION_PAGES} pages. Check API token/scope.`
+      );
+    }
+
+    const res = await fetch(nextUrl, { headers: getAuthHeaders(token) });
+    if (!res.ok) {
+      throw new Error(`Canvas API error: ${res.status} ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      throw new Error("Canvas API returned non-array paginated payload.");
+    }
+    items.push(...(data as T[]));
+
+    nextUrl = getNextLink(res.headers.get("link"));
+  }
+
+  return items;
+}
+
 function shouldAllowMockCanvas(): boolean {
   return (
     process.env.NODE_ENV !== "production" ||
@@ -48,17 +107,13 @@ export async function fetchCourses(accessToken?: string | null): Promise<CanvasC
     }
     return getMockCourses();
   }
-  const res = await fetch(
-    `${CANVAS_BASE_URL}/api/v1/courses?enrollment_state=active&include[]=total_scores`,
-    { headers: { Authorization: `Bearer ${token!}` } },
-  );
+  const url =
+    `${CANVAS_BASE_URL}/api/v1/courses` +
+    `?enrollment_state=active` +
+    `&include[]=total_scores` +
+    `&per_page=${DEFAULT_PER_PAGE}`;
 
-  if (!res.ok) {
-    throw new Error(`Canvas API error: ${res.status} ${res.statusText}`);
-  }
-
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
+  return fetchCanvasPaginated<CanvasCourse>(url, token);
 }
 
 /**
@@ -77,18 +132,12 @@ export async function fetchAssignments(
     }
     return getMockAssignments(String(courseId));
   }
+  const url =
+    `${CANVAS_BASE_URL}/api/v1/courses/${courseId}/assignments` +
+    `?include[]=submission` +
+    `&per_page=${DEFAULT_PER_PAGE}`;
 
-  const res = await fetch(
-    `${CANVAS_BASE_URL}/api/v1/courses/${courseId}/assignments?include[]=submission`,
-    { headers: { Authorization: `Bearer ${token!}` } }
-  );
-
-  if (!res.ok) {
-    throw new Error(`Canvas API error: ${res.status} ${res.statusText}`);
-  }
-
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
+  return fetchCanvasPaginated<CanvasAssignment>(url, token);
 }
 
 /**
@@ -109,7 +158,7 @@ export async function fetchCourseWithSyllabus(
 
   const res = await fetch(
     `${CANVAS_BASE_URL}/api/v1/courses/${courseId}?include[]=syllabus_body`,
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: getAuthHeaders(token) }
   );
   if (!res.ok) return null;
   const data = await res.json();
