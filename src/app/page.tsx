@@ -41,22 +41,22 @@ const features = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-mesh-light dark:bg-mesh-dark">
+    <div className="min-h-screen bg-background">
       {/* Navbar */}
       <motion.nav
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10"
+        className="fixed top-0 left-0 right-0 z-50 border-b border-border/80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-white" />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                <GraduationCap className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-semibold text-foreground">Assignment Copilot</span>
+              <span className="font-semibold text-foreground text-[15px]">Assignment Copilot</span>
             </Link>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <Link
                 href="/login"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -65,7 +65,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/login"
-                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:shadow-lg hover:shadow-primary/25 transition-all"
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
               >
                 Get Started
               </Link>
@@ -75,89 +75,82 @@ export default function LandingPage() {
       </motion.nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <section className="pt-28 pb-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
           <div className="text-center">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 text-blue-600 text-sm font-medium mb-8"
+              transition={{ duration: 0.4 }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-muted text-muted-foreground text-xs font-medium tracking-wide uppercase mb-8"
             >
-              <Sparkles className="w-4 h-4" />
-              Powered by AI • Built for Students
+              <Sparkles className="w-3.5 h-3.5" />
+              AI-powered • Built for students
             </motion.div>
 
             <motion.h1
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-4xl sm:text-5xl lg:text-7xl font-bold text-foreground mb-6"
+              transition={{ duration: 0.4, delay: 0.08 }}
+              className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-foreground tracking-tight mb-5"
             >
-              Your Academic{" "}
-              <span className="text-gradient-vibrant">Co-Pilot</span>
+              Your academic{" "}
+              <span className="text-primary">co-pilot</span>
             </motion.h1>
 
             <motion.p
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
+              transition={{ duration: 0.4, delay: 0.16 }}
+              className="text-lg text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed"
             >
               Plan, track, and get AI help on your assignments. Sync with Canvas,
               auto-schedule work sessions, and learn smarter.
             </motion.p>
 
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
+              transition={{ duration: 0.4, delay: 0.24 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-3"
             >
               <Link
                 href="/login"
-                className="group flex items-center gap-2 px-8 py-4 rounded-2xl bg-primary text-primary-foreground font-semibold shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 transition-all"
+                className="group inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
               >
-                Start for Free
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                Get started
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <Link
                 href="#features"
-                className="px-8 py-4 rounded-2xl bg-secondary text-secondary-foreground font-semibold hover:bg-secondary/80 transition-all"
+                className="px-6 py-3 rounded-lg border border-border text-foreground text-sm font-medium hover:bg-muted/50 transition-colors"
               >
-                Learn More
+                Learn more
               </Link>
             </motion.div>
 
-            {/* Hero Image / Preview */}
+            {/* Hero Preview */}
             <motion.div
-              initial={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.4 }}
-              className="mt-16 relative"
+              transition={{ duration: 0.5, delay: 0.32 }}
+              className="mt-14"
             >
-              <div className="relative mx-auto max-w-5xl">
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-3xl blur opacity-30" />
-                <div className="relative glass rounded-3xl p-2 shadow-2xl">
-                  <div className="bg-background rounded-2xl overflow-hidden aspect-[16/10]">
-                    <div className="w-full h-full bg-gradient-to-br from-secondary to-background p-8 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="flex items-center justify-center gap-4 mb-6">
-                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-                            <GraduationCap className="w-8 h-8 text-white" />
-                          </div>
-                          <div className="text-left">
-                            <h3 className="text-lg font-semibold text-foreground">Assignment Copilot</h3>
-                            <p className="text-sm text-muted-foreground">Dashboard Preview</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-4 justify-center">
-                          <div className="w-32 h-24 rounded-xl bg-card shadow-sm" />
-                          <div className="w-32 h-24 rounded-xl bg-card shadow-sm" />
-                          <div className="w-32 h-24 rounded-xl bg-card shadow-sm hidden sm:block" />
-                        </div>
-                      </div>
+              <div className="mx-auto max-w-4xl rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                <div className="aspect-[16/10] bg-muted/30 flex flex-col items-center justify-center gap-6 p-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-lg bg-primary flex items-center justify-center">
+                      <GraduationCap className="w-7 h-7 text-primary-foreground" />
                     </div>
+                    <div className="text-left">
+                      <p className="font-medium text-foreground">Assignment Copilot</p>
+                      <p className="text-sm text-muted-foreground">Dashboard</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-28 h-20 rounded-lg bg-background border border-border" />
+                    <div className="w-28 h-20 rounded-lg bg-background border border-border" />
+                    <div className="w-28 h-20 rounded-lg bg-background border border-border hidden sm:block" />
                   </div>
                 </div>
               </div>
@@ -167,46 +160,41 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <section id="features" className="py-16 px-4 sm:px-6 lg:px-8 border-t border-border/80">
+        <div className="max-w-6xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-12"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Everything you need to{" "}
-              <span className="text-gradient">excel</span>
+            <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
+              Everything you need to excel
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              A complete suite of tools designed specifically for students to manage
-              their academic workload with ease.
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm leading-relaxed">
+              Tools for students to manage coursework, deadlines, and study time.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {features.map((feature, index) => (
               <motion.div
                 key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="group relative"
+                transition={{ delay: index * 0.08 }}
+                className="rounded-xl border border-border bg-card p-5 hover:border-border/80 transition-colors"
               >
-                <div className={`absolute -inset-0.5 bg-gradient-to-r ${feature.color} rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-500`} />
-                <div className="relative glass rounded-2xl p-6 hover-lift">
-                  <div
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 shadow-lg`}
-                  >
-                    <feature.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">
-                    {feature.title}
-                  </h3>
-                  <p className="text-muted-foreground">{feature.description}</p>
+                <div
+                  className={`w-10 h-10 rounded-lg bg-gradient-to-br ${feature.color} flex items-center justify-center mb-3`}
+                >
+                  <feature.icon className="w-5 h-5 text-white" />
                 </div>
+                <h3 className="text-base font-semibold text-foreground mb-1.5">
+                  {feature.title}
+                </h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -214,51 +202,51 @@ export default function LandingPage() {
       </section>
 
       {/* How it Works */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 border-t border-border/80">
+        <div className="max-w-6xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-12"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
               How it works
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Get started in minutes and take control of your academic life.
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">
+              Get started in minutes.
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                step: "01",
+                step: "1",
                 title: "Connect Canvas",
-                description: "Link your Belmont Canvas account to automatically sync courses and assignments.",
+                description: "Link your Canvas account to sync courses and assignments.",
               },
               {
-                step: "02",
-                title: "Set Your Schedule",
-                description: "Import your availability or let us help you find the best times to study.",
+                step: "2",
+                title: "Set your schedule",
+                description: "Import availability or use defaults to plan work sessions.",
               },
               {
-                step: "03",
-                title: "Stay on Track",
-                description: "Get AI-powered assistance and track your progress effortlessly.",
+                step: "3",
+                title: "Stay on track",
+                description: "Use AI help and track progress in one place.",
               },
             ].map((item, index) => (
               <motion.div
                 key={item.step}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.08 }}
                 className="text-center"
               >
-                <div className="text-5xl font-bold text-gradient mb-4">{item.step}</div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">{item.title}</h3>
-                <p className="text-muted-foreground">{item.description}</p>
+                <div className="text-2xl font-semibold text-primary mb-3">{item.step}</div>
+                <h3 className="text-base font-semibold text-foreground mb-1.5">{item.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">{item.description}</p>
               </motion.div>
             ))}
           </div>
@@ -266,46 +254,41 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 border-t border-border/80">
+        <div className="max-w-2xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="relative overflow-hidden rounded-3xl"
+            className="rounded-xl border border-border bg-muted/30 px-6 py-12"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
-            <div className="absolute inset-0 bg-black/20" />
-            <div className="relative px-8 py-16 text-center">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Ready to get started?
-              </h2>
-              <p className="text-white/80 mb-8 max-w-xl mx-auto">
-                Sync Canvas, plan work sessions, and get AI help on assignments—
-                all in one place.
-              </p>
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-foreground font-semibold shadow-xl hover:shadow-2xl hover:scale-105 transition-all"
-              >
-                Get Started Free
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            </div>
+            <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
+              Ready to get started?
+            </h2>
+            <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
+              Sync Canvas, plan work sessions, and get AI help—all in one place.
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Get started
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-4 sm:px-6 lg:px-8 border-t border-border">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="py-6 px-4 sm:px-6 lg:px-8 border-t border-border">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-              <GraduationCap className="w-4 h-4 text-white" />
+            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+              <GraduationCap className="w-3.5 h-3.5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-foreground">Assignment Copilot</span>
+            <span className="font-medium text-foreground text-sm">Assignment Copilot</span>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             © 2025 Assignment Copilot. Built for Belmont University students.
           </p>
         </div>
