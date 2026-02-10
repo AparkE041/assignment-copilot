@@ -3,6 +3,8 @@
  * Uses DOMPurify to prevent XSS attacks from untrusted sources like Canvas.
  */
 
+"use client";
+
 import DOMPurify from "isomorphic-dompurify";
 
 interface SanitizedHtmlProps {
@@ -119,14 +121,4 @@ export function SanitizedHtml({
       dangerouslySetInnerHTML={{ __html: sanitized }}
     />
   );
-}
-
-/**
- * Sanitizes HTML for use in server components or API responses.
- */
-export function sanitizeHtmlString(html: string): string {
-  if (!html || typeof html !== "string") {
-    return "";
-  }
-  return sanitizeHtml(html);
 }
