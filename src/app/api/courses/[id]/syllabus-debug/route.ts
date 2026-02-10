@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { extractSyllabusDiagnostic } from "@/lib/syllabus/extract-from-file";
+import { decryptSecret } from "@/lib/secret-crypto";
 
 const CANVAS_BASE =
   process.env.CANVAS_BASE_URL ?? "https://belmont.instructure.com";
@@ -30,7 +31,10 @@ export async function GET(
   const connection = await prisma.canvasConnection.findUnique({
     where: { userId: session.user.id },
   });
-  const token = connection?.accessToken ?? process.env.CANVAS_PAT ?? null;
+  const token =
+    decryptSecret(connection?.accessToken)?.trim() ??
+    process.env.CANVAS_PAT?.trim() ??
+    null;
   if (!token) {
     return NextResponse.json(
       { error: "No Canvas token" },

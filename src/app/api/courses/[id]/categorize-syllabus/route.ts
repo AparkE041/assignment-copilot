@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { categorizeSyllabusWithAi } from "@/lib/syllabus/categorize-with-ai";
+import { decryptSecret } from "@/lib/secret-crypto";
 
 /**
  * POST /api/courses/[id]/categorize-syllabus - Use AI to categorize syllabus into sections
@@ -34,7 +35,9 @@ export async function POST(
   const aiSettings = await prisma.aiSettings.findUnique({
     where: { userId: session.user.id },
   });
-  const apiKey = aiSettings?.openRouterKey?.trim() ?? process.env.AZURE_OPENAI_API_KEY?.trim();
+  const apiKey =
+    decryptSecret(aiSettings?.openRouterKey)?.trim() ??
+    process.env.AZURE_OPENAI_API_KEY?.trim();
   const endpoint = aiSettings?.azureEndpoint?.trim() ?? process.env.AZURE_OPENAI_ENDPOINT?.trim();
   if (!apiKey || !endpoint) {
     return NextResponse.json(

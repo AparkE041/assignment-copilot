@@ -18,6 +18,7 @@ import {
 import { format, differenceInDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { NotificationManager } from "@/components/notification-manager";
+import { FormMessage } from "@/components/ui/form-message";
 
 interface DashboardData {
   assignments: Array<{
@@ -49,6 +50,10 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{
+    type: "success" | "error" | "info";
+    text: string;
+  } | null>(null);
 
   async function fetchDashboard() {
     try {
@@ -66,11 +71,29 @@ export default function DashboardPage() {
 
   async function handleSync() {
     setIsSyncing(true);
+    setSyncMessage(null);
     try {
-      await fetch("/api/canvas/sync", { method: "POST" });
+      const res = await fetch("/api/canvas/sync", { method: "POST" });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSyncMessage({
+          type: "error",
+          text: result.error ?? "Sync failed. Please verify your Canvas connection.",
+        });
+        return;
+      }
+
+      setSyncMessage({
+        type: "success",
+        text: `Sync complete: ${result.assignmentsCreated ?? 0} new, ${result.assignmentsUpdated ?? 0} updated assignments.`,
+      });
       await fetchDashboard();
     } catch (error) {
       console.error("Sync failed:", error);
+      setSyncMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Sync failed.",
+      });
     } finally {
       setIsSyncing(false);
     }
@@ -121,15 +144,18 @@ export default function DashboardPage() {
             Welcome back! Here&apos;s what&apos;s happening today.
           </p>
         </div>
-        <Button
-          onClick={handleSync}
-          disabled={isSyncing}
-          variant="outline"
-          className="rounded-xl gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
-          {isSyncing ? "Syncing..." : "Sync Canvas"}
-        </Button>
+        <div className="flex flex-col items-start sm:items-end gap-2">
+          <Button
+            onClick={handleSync}
+            disabled={isSyncing}
+            variant="outline"
+            className="rounded-xl gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
+            {isSyncing ? "Syncing..." : "Sync Canvas"}
+          </Button>
+          {syncMessage && <FormMessage type={syncMessage.type}>{syncMessage.text}</FormMessage>}
+        </div>
       </div>
 
       {/* Stats Grid */}

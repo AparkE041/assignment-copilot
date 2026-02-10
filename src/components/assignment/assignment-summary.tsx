@@ -30,10 +30,9 @@ export interface AssignmentSummaryData {
 interface Props {
   assignmentId: string;
   summary: AssignmentSummaryData;
-  descriptionHtml: string | null;
 }
 
-export function AssignmentSummary({ assignmentId, summary: initial, descriptionHtml }: Props) {
+export function AssignmentSummary({ assignmentId, summary: initial }: Props) {
   const [data, setData] = useState<AssignmentSummaryData>(initial);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);

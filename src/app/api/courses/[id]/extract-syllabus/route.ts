@@ -8,6 +8,7 @@ import {
   extractSyllabusFromCourseFiles,
 } from "@/lib/syllabus/extract-from-file";
 import { categorizeSyllabusWithAi } from "@/lib/syllabus/categorize-with-ai";
+import { decryptSecret } from "@/lib/secret-crypto";
 
 const CANVAS_BASE =
   process.env.CANVAS_BASE_URL ?? "https://belmont.instructure.com";
@@ -37,7 +38,9 @@ export async function POST(
     where: { userId: session.user.id },
   });
   const token =
-    connection?.accessToken ?? process.env.CANVAS_PAT ?? null;
+    decryptSecret(connection?.accessToken)?.trim() ??
+    process.env.CANVAS_PAT?.trim() ??
+    null;
   if (!token) {
     return NextResponse.json(
       { error: "No Canvas token. Connect Canvas in Settings." },
@@ -96,7 +99,9 @@ export async function POST(
     const aiSettings = await prisma.aiSettings.findUnique({
       where: { userId: session.user.id },
     });
-    const apiKey = aiSettings?.openRouterKey?.trim() ?? process.env.AZURE_OPENAI_API_KEY?.trim();
+    const apiKey =
+      decryptSecret(aiSettings?.openRouterKey)?.trim() ??
+      process.env.AZURE_OPENAI_API_KEY?.trim();
     const endpoint = aiSettings?.azureEndpoint?.trim() ?? process.env.AZURE_OPENAI_ENDPOINT?.trim();
     const deployment = aiSettings?.azureDeployment?.trim() ?? process.env.AZURE_OPENAI_DEPLOYMENT?.trim();
     if (apiKey && endpoint) {

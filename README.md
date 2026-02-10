@@ -25,7 +25,7 @@ Plan, track, and get AI help on your Belmont assignments. Connects to Canvas LMS
 cp .env.example .env.local
 # Fill DATABASE_URL, AUTH_SECRET, RESEND_API_KEY, etc.
 npm install
-npx prisma migrate deploy
+npx prisma migrate dev
 npm run db:seed
 npm run dev
 ```
@@ -36,6 +36,7 @@ See [.env.example](.env.example) for required variables. Mock mode works without
 
 - `npm run dev` – development server
 - `npm run build` – production build
+- `npm run db:migrate:deploy` – apply migrations in production
 - `npm run db:seed` – seed mock data
 - `npm run test` – unit tests (Vitest)
 - `npm run test:e2e` – E2E tests (Playwright)

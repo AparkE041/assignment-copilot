@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { createAzureProvider } from "./azure";
+import { decryptSecret } from "@/lib/secret-crypto";
 
 export type IntegrityMode = "help_me_learn" | "drafting_help";
 export interface IntegritySettings {
@@ -40,7 +41,7 @@ export async function getProvider(userId?: string): Promise<AIProvider | null> {
     const settings = await prisma.aiSettings.findUnique({
       where: { userId },
     });
-    apiKey = settings?.openRouterKey?.trim();
+    apiKey = decryptSecret(settings?.openRouterKey)?.trim();
     endpoint = settings?.azureEndpoint?.trim();
     deployment = settings?.azureDeployment?.trim();
   }

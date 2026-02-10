@@ -45,8 +45,8 @@ Deploy to **Vercel** with **Supabase** (Postgres). Optional: Resend (email), Azu
    | `DATABASE_URL` | Yes | Supabase Postgres connection string (Session pooler, with real password). |
    | `AUTH_SECRET` | Yes | Secret for NextAuth. Generate: `openssl rand -base64 32` |
    | `NEXTAUTH_URL` | Yes | Production URL, e.g. `https://your-app.vercel.app` (no trailing slash). |
-   | `CRON_SECRET` | Yes | Random string for protecting cron routes. Generate: `openssl rand -base64 24` |
-   | `ENCRYPTION_KEY` | Recommended | 32-character hex for encrypting tokens (e.g. Canvas PAT). Generate: `openssl rand -hex 16` |
+   | `CRON_SECRET` | Yes (if cron enabled) | Random string for protecting cron routes. Generate: `openssl rand -base64 24` |
+   | `ENCRYPTION_KEY` | Recommended | Hex key for encrypting stored secrets (Canvas token, Azure key). Generate: `openssl rand -hex 16` |
    | `RESEND_API_KEY` | Optional | Resend API key (email reminders; currently disabled in app). |
    | `RESEND_FROM_EMAIL` | Optional | Sender email (e.g. `onboarding@resend.dev` or your domain). |
    | `AZURE_OPENAI_ENDPOINT` | Optional | Azure OpenAI endpoint (users can also set in Settings). |
@@ -60,25 +60,13 @@ Deploy to **Vercel** with **Supabase** (Postgres). Optional: Resend (email), Azu
 
 ## 4. Run Migrations (Production DB)
 
-Migrations must be run **once** against the production database (e.g. after first deploy).
-
-**Option A – From your machine (recommended)**  
-Use the **same** `DATABASE_URL` as in Vercel (Supabase Session pooler):
+Run migrations as an explicit deployment step (recommended) using the same `DATABASE_URL` as Vercel:
 
 ```bash
-DATABASE_URL="postgresql://postgres.[ref]:YOUR_PASSWORD@...pooler.supabase.com:6543/postgres" npx prisma migrate deploy
+DATABASE_URL="postgresql://postgres.[ref]:YOUR_PASSWORD@...pooler.supabase.com:6543/postgres" npm run db:migrate:deploy
 ```
 
-**Option B – Vercel build**  
-You can run migrations in the Vercel build step by adding to `package.json`:
-
-```json
-"scripts": {
-  "build": "prisma migrate deploy && next build"
-}
-```
-
-Then Prisma runs migrations before each deploy. Prefer Option A for the first run so you can confirm migrations succeed before changing the build.
+Why: the app `build` script no longer runs migrations. This avoids flaky deploys caused by transient database connectivity during build.
 
 **Do not run** `npm run db:seed` in production. Seed is disabled when `NODE_ENV=production`.
 
@@ -86,19 +74,23 @@ Then Prisma runs migrations before each deploy. Prefer Option A for the first ru
 
 ## 5. Cron Jobs (Optional)
 
-The app defines cron routes for sync and reminders. **Vercel Pro** can run them on a schedule. On **Hobby**, use an external cron service.
+The app defines cron routes for sync and reminders. Cron jobs are supported on all Vercel plans, but **Hobby has scheduling limits**:
+
+- Minimum interval: **once per day**
+- Timing precision: **hourly window** (e.g. `1:00` may run between `1:00` and `1:59`)
 
 - **Routes**:  
   - `GET /api/cron/sync` – Canvas sync (e.g. hourly)  
   - `GET /api/cron/reminders` – Reminders (e.g. every 15 min)  
 - **Auth**: Send header: `Authorization: Bearer <CRON_SECRET>`  
+- **Hobby recommendation**: keep Vercel cron for low-frequency daily tasks, and use an external scheduler for hourly/15-min cadence.
 - **Example (cron-job.org or similar)**:  
   - URL: `https://your-app.vercel.app/api/cron/sync`  
   - Method: GET  
   - Header: `Authorization: Bearer YOUR_CRON_SECRET`  
   - Schedule: every hour (sync) / every 15 min (reminders)
 
-`vercel.json` is already configured with cron paths; Vercel Pro will use it if you have a Pro plan.
+`vercel.json` in this repo is already set to once-daily schedules, which are Hobby-compatible.
 
 ---
 
@@ -106,12 +98,15 @@ The app defines cron routes for sync and reminders. **Vercel Pro** can run them 
 
 - [ ] `DATABASE_URL` in Vercel matches Supabase Session pooler (with correct password).  
 - [ ] `AUTH_SECRET` and `NEXTAUTH_URL` set; `NEXTAUTH_URL` has no trailing slash.  
-- [ ] `CRON_SECRET` set; cron routes return 401 without correct `Authorization` header.  
-- [ ] Migrations applied: `npx prisma migrate deploy` with production `DATABASE_URL`.  
+- [ ] `ENCRYPTION_KEY` set (recommended) before storing Canvas or Azure credentials.  
+- [ ] `CRON_SECRET` set if cron routes are enabled; routes return 401 without correct `Authorization` header.  
+- [ ] Migrations applied: `npm run db:migrate:deploy` with production `DATABASE_URL`.  
 - [ ] Seed **not** run in production (it will fail by design).  
 - [ ] Sign up with a real account and confirm login, dashboard, and core flows.  
 - [ ] (Optional) Add Azure OpenAI env vars or configure AI in Settings.  
 - [ ] (Optional) Configure cron for `/api/cron/sync` and `/api/cron/reminders` if you use them.  
+- [ ] Check `GET /api/health` returns `{ "ok": true }` in production.  
+- [ ] In app Settings, review **Deployment Readiness** and resolve any blocking checks.  
 
 ---
 

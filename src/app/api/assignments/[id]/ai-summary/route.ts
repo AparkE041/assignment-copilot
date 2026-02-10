@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { AzureOpenAI } from "openai";
+import { decryptSecret } from "@/lib/secret-crypto";
 
 /**
  * POST /api/assignments/:id/ai-summary
@@ -49,7 +50,7 @@ export async function POST(
   // Get Azure credentials
   const settings = await prisma.aiSettings.findUnique({ where: { userId } });
   const apiKey =
-    settings?.openRouterKey?.trim() ??
+    decryptSecret(settings?.openRouterKey)?.trim() ??
     process.env.AZURE_OPENAI_API_KEY?.trim();
   const endpoint =
     settings?.azureEndpoint?.trim() ??

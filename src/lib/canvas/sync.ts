@@ -11,6 +11,7 @@ import {
   extractSyllabusFromLinkedFiles,
   extractSyllabusFromCourseFiles,
 } from "@/lib/syllabus/extract-from-file";
+import { encryptSecret } from "@/lib/secret-crypto";
 
 const CANVAS_BASE =
   process.env.CANVAS_BASE_URL ?? "https://belmont.instructure.com";
@@ -37,14 +38,18 @@ export async function syncCanvas(
   };
 
   try {
-    // Upsert Canvas connection
-    await prisma.canvasConnection.upsert({
-      where: { userId },
-      create: { userId, accessToken },
-      update: { accessToken },
-    });
+    const token = accessToken.trim();
+    if (token) {
+      const encryptedToken = encryptSecret(token) ?? token;
+      // Upsert Canvas connection
+      await prisma.canvasConnection.upsert({
+        where: { userId },
+        create: { userId, accessToken: encryptedToken },
+        update: { accessToken: encryptedToken },
+      });
+    }
 
-    const courses = await fetchCourses(accessToken);
+    const courses = await fetchCourses(token || null);
 
     for (const c of courses) {
       const existing = await prisma.course.findUnique({
@@ -54,7 +59,7 @@ export async function syncCanvas(
       // Fetch full course with syllabus when using real Canvas (not mock)
       let payload: object = c as object;
       let syllabusExtractedText: string | null = null;
-      const withSyllabus = await fetchCourseWithSyllabus(c.id, accessToken);
+      const withSyllabus = await fetchCourseWithSyllabus(c.id, token || null);
       if (withSyllabus && typeof (withSyllabus as Record<string, unknown>).syllabus_body !== "undefined") {
         payload = withSyllabus as object;
         const syllabusBody = (withSyllabus as Record<string, unknown>).syllabus_body;
@@ -64,7 +69,7 @@ export async function syncCanvas(
               (await extractSyllabusFromLinkedFiles(
                 syllabusBody,
                 CANVAS_BASE,
-                accessToken,
+                token,
                 String(c.id)
               )) ?? null;
           }
@@ -73,7 +78,7 @@ export async function syncCanvas(
               (await extractSyllabusFromCourseFiles(
                 String(c.id),
                 CANVAS_BASE,
-                accessToken
+                token
               )) ?? null;
           }
         } catch {
@@ -109,7 +114,7 @@ export async function syncCanvas(
       }
 
       // Fetch assignments for this course
-      const assignments = await fetchAssignments(c.id, accessToken);
+      const assignments = await fetchAssignments(c.id, token || null);
       const course = await prisma.course.findUnique({
         where: { userId_canvasId: { userId, canvasId: String(c.id) } },
       });

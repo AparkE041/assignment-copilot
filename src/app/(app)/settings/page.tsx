@@ -5,6 +5,7 @@ import { CanvasConnectForm } from "./canvas-connect-form";
 import { AzureForm } from "./azure-form";
 import { AvailabilityImport } from "./availability-import";
 import { CalendarExport } from "./calendar-export";
+import { DeploymentReadiness } from "./deployment-readiness";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -26,9 +27,28 @@ export default async function SettingsPage() {
       <div>
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
         <p className="text-muted-foreground mt-1">
-          Canvas, availability, and calendar export
+          Deployment checks, Canvas, availability, and calendar export
         </p>
       </div>
+
+      <Card className="glass border-0 rounded-2xl shadow-apple hover:shadow-apple-lg transition-shadow">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5-1a8 8 0 11-16 0 8 8 0 0116 0z" />
+              </svg>
+            </div>
+            Deployment Readiness
+          </CardTitle>
+          <CardDescription>
+            Verify deployment configuration and integration health for this account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DeploymentReadiness />
+        </CardContent>
+      </Card>
 
       <Card className="glass border-0 rounded-2xl shadow-apple hover:shadow-apple-lg transition-shadow">
         <CardHeader>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { encryptSecret } from "@/lib/secret-crypto";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -18,13 +19,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const encryptedToken = encryptSecret(token) ?? token;
+
   await prisma.canvasConnection.upsert({
     where: { userId: session.user.id },
     create: {
       userId: session.user.id,
-      accessToken: token,
+      accessToken: encryptedToken,
     },
-    update: { accessToken: token },
+    update: { accessToken: encryptedToken },
   });
 
   return NextResponse.json({ success: true });

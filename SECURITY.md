@@ -23,9 +23,9 @@
 
 ## Token Security
 
-- Canvas PAT stored in `CanvasConnection.accessToken` (server-only)
-- Azure API keys stored in `AiSettings` or env; never logged or returned
-- Optional: encrypt tokens at rest with `ENCRYPTION_KEY`
+- Canvas PAT and Azure API keys are encrypted at rest when `ENCRYPTION_KEY` is set
+- Legacy plaintext secrets remain readable for backward compatibility and are re-encrypted on save
+- Tokens are stored server-side only and never returned in API responses
 - Never log or return tokens in API responses
 
 ## Prompt Injection Defenses

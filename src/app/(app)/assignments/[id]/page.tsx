@@ -167,7 +167,6 @@ export default async function AssignmentDetailPage({
           <AssignmentSummary
             assignmentId={assignment.id}
             summary={summary}
-            descriptionHtml={assignment.descriptionHtml}
           />
         </TabsContent>
 

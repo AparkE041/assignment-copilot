@@ -18,19 +18,10 @@ export async function GET() {
   const userId = session.user.id;
   const now = new Date();
 
-  const [assignments, sessions, allSessions] = await Promise.all([
+  const [assignments, allSessions] = await Promise.all([
     prisma.assignment.findMany({
       where: { course: { userId } },
       include: { localState: true, course: { select: { name: true } } },
-    }),
-    // Sessions from last 4 weeks
-    prisma.plannedSession.findMany({
-      where: {
-        userId,
-        startAt: { gte: subWeeks(now, 4) },
-      },
-      include: { assignment: { select: { title: true, course: { select: { name: true } } } } },
-      orderBy: { startAt: "asc" },
     }),
     // All sessions for total stats
     prisma.plannedSession.findMany({

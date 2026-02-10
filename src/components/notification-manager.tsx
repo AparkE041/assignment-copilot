@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Bell, BellOff, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { differenceInHours, format } from "date-fns";
 
@@ -10,35 +10,18 @@ import { differenceInHours, format } from "date-fns";
  * Also renders a small banner if permission hasn't been granted.
  */
 export function NotificationManager() {
-  const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
-  const [dismissed, setDismissed] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(() => {
+    if (typeof window === "undefined") return "default";
+    if (!("Notification" in window)) return "unsupported";
+    return Notification.permission;
+  });
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("notif-dismissed") === "true";
+  });
   const checkedRef = useRef(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      setPermission("unsupported");
-      return;
-    }
-    setPermission(Notification.permission);
-
-    // Check if user previously dismissed the banner
-    if (localStorage.getItem("notif-dismissed") === "true") {
-      setDismissed(true);
-    }
-  }, []);
-
-  // Schedule check when permission is granted
-  useEffect(() => {
-    if (permission !== "granted" || checkedRef.current) return;
-    checkedRef.current = true;
-
-    checkAndNotify();
-    // Re-check every 30 minutes
-    const interval = setInterval(checkAndNotify, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [permission]);
-
-  async function checkAndNotify() {
+  const checkAndNotify = useCallback(async () => {
     try {
       const res = await fetch("/api/dashboard");
       if (!res.ok) return;
@@ -73,7 +56,18 @@ export function NotificationManager() {
     } catch {
       // Silently fail
     }
-  }
+  }, []);
+
+  // Schedule check when permission is granted
+  useEffect(() => {
+    if (permission !== "granted" || checkedRef.current) return;
+    checkedRef.current = true;
+
+    void checkAndNotify();
+    // Re-check every 30 minutes
+    const interval = setInterval(checkAndNotify, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [permission, checkAndNotify]);
 
   async function requestPermission() {
     if (!("Notification" in window)) return;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { decryptSecret, encryptSecret } from "@/lib/secret-crypto";
 
 /**
  * POST /api/ai/azure - Save Azure OpenAI settings (endpoint, API key, deployment)
@@ -15,18 +16,19 @@ export async function POST(request: Request) {
   const endpoint = typeof body.endpoint === "string" ? body.endpoint.trim() || null : null;
   const apiKey = typeof body.apiKey === "string" ? body.apiKey.trim() || null : null;
   const deployment = typeof body.deployment === "string" ? body.deployment.trim() || null : null;
+  const encryptedApiKey = apiKey ? encryptSecret(apiKey) ?? apiKey : null;
 
   try {
     await prisma.aiSettings.upsert({
       where: { userId: session.user.id },
       create: {
         userId: session.user.id,
-        openRouterKey: apiKey,
+        openRouterKey: encryptedApiKey,
         azureEndpoint: endpoint,
         azureDeployment: deployment,
       },
       update: {
-        openRouterKey: apiKey,
+        openRouterKey: encryptedApiKey,
         azureEndpoint: endpoint,
         azureDeployment: deployment,
       },
@@ -54,7 +56,7 @@ export async function GET() {
   });
 
   const configured = !!(
-    settings?.openRouterKey?.trim() &&
+    decryptSecret(settings?.openRouterKey)?.trim() &&
     settings?.azureEndpoint?.trim()
   );
 

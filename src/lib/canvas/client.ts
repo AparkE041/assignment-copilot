@@ -28,12 +28,24 @@ export interface CanvasSubmissionType {
   [key: string]: unknown;
 }
 
+function shouldAllowMockCanvas(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.CANVAS_ALLOW_MOCK === "true"
+  );
+}
+
 /**
  * Fetch courses from Canvas API or return mock data.
  */
 export async function fetchCourses(accessToken?: string | null): Promise<CanvasCourse[]> {
   const token = accessToken || process.env.CANVAS_PAT;
   if (!token) {
+    if (!shouldAllowMockCanvas()) {
+      throw new Error(
+        "Canvas token is required. Configure Canvas in Settings or set CANVAS_PAT."
+      );
+    }
     return getMockCourses();
   }
   const res = await fetch(
@@ -58,6 +70,11 @@ export async function fetchAssignments(
 ): Promise<CanvasAssignment[]> {
   const token = accessToken || process.env.CANVAS_PAT;
   if (!token) {
+    if (!shouldAllowMockCanvas()) {
+      throw new Error(
+        "Canvas token is required. Configure Canvas in Settings or set CANVAS_PAT."
+      );
+    }
     return getMockAssignments(String(courseId));
   }
 
@@ -83,7 +100,12 @@ export async function fetchCourseWithSyllabus(
   accessToken?: string | null
 ): Promise<CanvasCourse | null> {
   const token = accessToken || process.env.CANVAS_PAT;
-  if (!token) return null;
+  if (!token) {
+    if (shouldAllowMockCanvas()) return null;
+    throw new Error(
+      "Canvas token is required. Configure Canvas in Settings or set CANVAS_PAT."
+    );
+  }
 
   const res = await fetch(
     `${CANVAS_BASE_URL}/api/v1/courses/${courseId}?include[]=syllabus_body`,
@@ -157,5 +179,5 @@ function getMockAssignments(courseId: string): CanvasAssignment[] {
  * Check if we're in mock mode (no PAT).
  */
 export function isMockMode(): boolean {
-  return !process.env.CANVAS_PAT;
+  return shouldAllowMockCanvas() && !process.env.CANVAS_PAT;
 }

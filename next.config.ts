@@ -18,12 +18,6 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Turbopack configuration
-  turbopack: {
-    // Root directory configuration
-    root: ".",
-  },
-
   // Security headers
   async headers() {
     return [

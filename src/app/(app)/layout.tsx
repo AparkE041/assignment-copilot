@@ -8,13 +8,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let session;
-  try {
-    session = await auth();
-  } catch (err) {
-    console.error("App layout auth error:", err);
-    redirect("/login");
-  }
+  const session = await auth();
 
   if (!session?.user) {
     redirect("/login");
