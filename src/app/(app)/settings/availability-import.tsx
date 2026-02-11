@@ -58,6 +58,7 @@ export function AvailabilityImport() {
   });
   const [uploadMessage, setUploadMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [subscriptionMessage, setSubscriptionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const hasUploadedIcs = icsStatus.importedBlocks > 0 || !!icsStatus.latestImportedAt;
 
   useEffect(() => {
     void Promise.all([loadSubscriptions(), loadIcsStatus()]);
@@ -371,12 +372,44 @@ export function AvailabilityImport() {
 
           {subscriptionsLoading ? (
             <p className="text-sm text-muted-foreground">Loading subscriptions...</p>
-          ) : subscriptions.length === 0 ? (
+          ) : !hasUploadedIcs && subscriptions.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No subscribed calendar feeds yet.
+              No connected calendar sources yet.
             </p>
           ) : (
             <div className="space-y-3">
+              {hasUploadedIcs && (
+                <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        Uploaded ICS file
+                      </p>
+                      <p className="text-xs text-muted-foreground break-all">
+                        Local file upload
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge variant={icsStatus.importedBlocks > 0 ? "default" : "secondary"}>
+                          {icsStatus.importedBlocks > 0 ? "Imported" : "No blocks"}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          Last import: {formatDateTime(icsStatus.latestImportedAt)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {icsStatus.importedBlocks} busy block
+                        {icsStatus.importedBlocks === 1 ? "" : "s"} stored
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        Upload a new ICS file to refresh
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {subscriptions.map((subscription) => {
                 const busy = subscriptionActionId === subscription.id;
                 return (
