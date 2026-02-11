@@ -6,6 +6,7 @@ import { AzureForm } from "./azure-form";
 import { AvailabilityImport } from "./availability-import";
 import { CalendarExport } from "./calendar-export";
 import { DeploymentReadiness } from "./deployment-readiness";
+import { SyncHealthCenter } from "./sync-health-center";
 import { ProfileSettingsForm } from "./profile-settings-form";
 import { PasswordResetForm } from "./password-reset-form";
 
@@ -112,6 +113,25 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <DeploymentReadiness />
+        </CardContent>
+      </Card>
+
+      <Card className="glass border-0 rounded-2xl shadow-apple hover:shadow-apple-lg transition-shadow">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </div>
+            Sync Health Center
+          </CardTitle>
+          <CardDescription>
+            Unified status and retry controls for Canvas, ICS upload, and subscribed calendars.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SyncHealthCenter />
         </CardContent>
       </Card>
 

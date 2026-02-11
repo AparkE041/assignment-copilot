@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseIcs } from "@/lib/ics/parser";
+import { parseIcs, parseIcsWithDiagnostics } from "@/lib/ics/parser";
 
 describe("parseIcs", () => {
   it("parses TZID-based date-times into UTC instants", () => {
@@ -112,5 +112,37 @@ describe("parseIcs", () => {
     expect(events).toHaveLength(1);
     expect(events[0]?.start.toISOString()).toBe("2026-02-12T09:00:00.000Z");
     expect(events[0]?.end.toISOString()).toBe("2026-02-12T10:00:00.000Z");
+  });
+
+  it("returns diagnostics for ignored events", () => {
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "BEGIN:VEVENT",
+      "SUMMARY:No start",
+      "END:VEVENT",
+      "BEGIN:VEVENT",
+      "DTSTART:invalid-value",
+      "DTEND:20260212T100000Z",
+      "SUMMARY:Bad start",
+      "END:VEVENT",
+      "BEGIN:VEVENT",
+      "DTSTART:20260212T090000Z",
+      "DTEND:20260212T100000Z",
+      "SUMMARY:Good event",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\n");
+
+    const parsed = parseIcsWithDiagnostics(ics);
+    expect(parsed.events).toHaveLength(1);
+    expect(parsed.diagnostics.totalEvents).toBe(3);
+    expect(parsed.diagnostics.parsedEvents).toBe(1);
+    expect(parsed.diagnostics.ignoredEvents).toBe(2);
+    expect(
+      parsed.diagnostics.ignored.some((item) => item.reason === "missing DTSTART"),
+    ).toBe(true);
+    expect(
+      parsed.diagnostics.ignored.some((item) => item.reason === "invalid DTSTART"),
+    ).toBe(true);
   });
 });

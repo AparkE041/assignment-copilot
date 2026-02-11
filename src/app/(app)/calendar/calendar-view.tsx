@@ -159,9 +159,16 @@ function CalendarToolbar({
 export function CalendarView({
   events: initialEvents,
   availabilityEvents = [],
+  emptyState,
 }: {
   events: CalendarEvent[];
   availabilityEvents?: CalendarEvent[];
+  emptyState?: {
+    title: string;
+    description: string;
+    ctaHref: string;
+    ctaLabel: string;
+  } | null;
 }) {
   const router = useRouter();
   const [view, setView] = useState<View>("week");
@@ -316,16 +323,16 @@ export function CalendarView({
             <CalendarDays className="w-10 h-10 text-primary" />
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-2 text-center">
-            No work sessions yet
+            {emptyState?.title ?? "No work sessions yet"}
           </h3>
           <p className="text-sm text-muted-foreground text-center max-w-sm mb-8">
-            Use <strong>Auto-plan sessions</strong> above to schedule work across your available days.
-            Sync Canvas first so assignments with due dates are available.
+            {emptyState?.description ??
+              "Use Draft auto-plan above to schedule work across your available days. Sync Canvas first so assignments with due dates are available."}
           </p>
-          <Link href="/dashboard">
+          <Link href={emptyState?.ctaHref ?? "/dashboard"}>
             <Button variant="outline" className="rounded-xl gap-2">
               <Sparkles className="w-4 h-4" />
-              Go to Dashboard
+              {emptyState?.ctaLabel ?? "Go to Dashboard"}
             </Button>
           </Link>
         </div>

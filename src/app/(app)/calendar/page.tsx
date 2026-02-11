@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Calendar, Settings, Clock3, ListChecks, Timer, TrendingUp } from "lucide-react";
 import { isBusyCalendarSource } from "@/lib/availability/derive-free-windows";
+import { getEffectiveAssignmentStatus } from "@/lib/assignments/completion";
 
 type PlannedSessionRow = Prisma.PlannedSessionGetPayload<{
   include: {
@@ -25,18 +26,25 @@ type AvailabilityBlockRow = Prisma.AvailabilityBlockGetPayload<{
   select: { id: true; startAt: true; endAt: true; source: true };
 }>;
 
+type AssignmentRow = Prisma.AssignmentGetPayload<{
+  include: {
+    localState: true;
+  };
+}>;
+
 export default async function CalendarPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
   let plannedSessions: PlannedSessionRow[] = [];
   let availabilityBlocks: AvailabilityBlockRow[] = [];
+  let assignments: AssignmentRow[] = [];
   try {
     const now = new Date();
     const availabilityEnd = new Date(now);
     availabilityEnd.setDate(availabilityEnd.getDate() + 90);
 
-    [plannedSessions, availabilityBlocks] = await Promise.all([
+    [plannedSessions, availabilityBlocks, assignments] = await Promise.all([
       prisma.plannedSession.findMany({
         where: { userId: session.user.id },
         include: {
@@ -55,11 +63,16 @@ export default async function CalendarPage() {
         select: { id: true, startAt: true, endAt: true, source: true },
         orderBy: { startAt: "asc" },
       }),
+      prisma.assignment.findMany({
+        where: { course: { userId: session.user.id } },
+        include: { localState: true },
+      }),
     ]);
   } catch (err) {
     console.error("Calendar page error:", err);
     plannedSessions = [];
     availabilityBlocks = [];
+    assignments = [];
   }
 
   const events = plannedSessions.map((ps) => ({
@@ -78,6 +91,9 @@ export default async function CalendarPage() {
 
   const busyBlocks = availabilityBlocks.filter((block) =>
     isBusyCalendarSource(block.source),
+  );
+  const explicitAvailabilityBlocks = availabilityBlocks.filter(
+    (block) => !isBusyCalendarSource(block.source),
   );
 
   const availabilityEvents = busyBlocks.map((block) => ({
@@ -116,6 +132,65 @@ export default async function CalendarPage() {
       (total, block) => total + differenceInMinutes(block.endAt, block.startAt),
       0
     ) / 60;
+  const actionableAssignments = assignments.filter((assignment) => {
+    const effectiveStatus = getEffectiveAssignmentStatus({
+      localStatus: assignment.localState?.status ?? null,
+      score: assignment.score,
+      grade: assignment.grade,
+      points: assignment.points,
+    });
+    return (
+      effectiveStatus !== "done" &&
+      !!assignment.dueAt &&
+      assignment.dueAt.getTime() > now.getTime()
+    );
+  });
+
+  let emptyState:
+    | {
+        title: string;
+        description: string;
+        ctaHref: string;
+        ctaLabel: string;
+      }
+    | null = null;
+  if (plannedSessions.length === 0) {
+    if (assignments.length === 0) {
+      emptyState = {
+        title: "No assignments synced yet",
+        description:
+          "Sync Canvas first so auto-plan can schedule sessions from your real deadlines.",
+        ctaHref: "/dashboard",
+        ctaLabel: "Go to Dashboard",
+      };
+    } else if (actionableAssignments.length === 0) {
+      emptyState = {
+        title: "No future assignments to schedule",
+        description:
+          "Everything due soon is completed or no upcoming due dates are available right now.",
+        ctaHref: "/assignments",
+        ctaLabel: "Review Assignments",
+      };
+    } else if (explicitAvailabilityBlocks.length === 0 && busyBlocks.length === 0) {
+      emptyState = {
+        title: "No availability windows configured",
+        description:
+          "Add your availability or connect calendars so planner can place sessions at realistic times.",
+        ctaHref: "/settings",
+        ctaLabel: "Set Availability",
+      };
+    } else {
+      emptyState = {
+        title: "No sessions scheduled yet",
+        description:
+          "Draft an auto-plan to preview where sessions can fit, then apply or regenerate safely.",
+        ctaHref: "/calendar",
+        ctaLabel: "Draft Auto-Plan",
+      };
+    }
+  }
+  const showInlineEmptyBanner =
+    !!emptyState && !(events.length === 0 && availabilityEvents.length === 0);
 
   return (
     <div className="space-y-6">
@@ -209,8 +284,26 @@ export default async function CalendarPage() {
         </div>
       )}
 
+      {showInlineEmptyBanner && emptyState && (
+        <div className="rounded-2xl border border-border/70 bg-secondary/20 px-4 py-3">
+          <p className="text-sm font-semibold text-foreground">{emptyState.title}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{emptyState.description}</p>
+          <div className="mt-3">
+            <Link href={emptyState.ctaHref}>
+              <Button variant="outline" size="sm" className="rounded-xl">
+                {emptyState.ctaLabel}
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Calendar */}
-      <CalendarView events={events} availabilityEvents={availabilityEvents} />
+      <CalendarView
+        events={events}
+        availabilityEvents={availabilityEvents}
+        emptyState={emptyState}
+      />
     </div>
   );
 }

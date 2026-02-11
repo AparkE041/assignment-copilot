@@ -9,6 +9,7 @@ import {
   differenceInMinutes,
   differenceInDays,
 } from "date-fns";
+import { getEffectiveAssignmentStatus } from "@/lib/assignments/completion";
 
 export async function GET() {
   const session = await auth();
@@ -75,14 +76,24 @@ export async function GET() {
 
   // Assignment status breakdown
   const statusCounts = { not_started: 0, in_progress: 0, done: 0 };
+  const effectiveStatusByAssignment = new Map<string, keyof typeof statusCounts>();
   for (const a of assignments) {
-    const s = (a.localState?.status ?? "not_started") as keyof typeof statusCounts;
-    if (s in statusCounts) statusCounts[s]++;
+    const s = getEffectiveAssignmentStatus({
+      localStatus: a.localState?.status ?? null,
+      score: a.score,
+      grade: a.grade,
+      points: a.points,
+    }) as keyof typeof statusCounts;
+    const normalizedStatus: keyof typeof statusCounts =
+      s in statusCounts ? s : "not_started";
+    effectiveStatusByAssignment.set(a.id, normalizedStatus);
+    statusCounts[normalizedStatus]++;
   }
 
   // Upcoming workload (next 7 days)
   const upcomingAssignments = assignments
     .filter((a) => {
+      if (effectiveStatusByAssignment.get(a.id) === "done") return false;
       if (!a.dueAt) return false;
       const days = differenceInDays(a.dueAt, now);
       return days >= 0 && days <= 7;
@@ -95,7 +106,7 @@ export async function GET() {
     const name = a.course.name;
     const entry = courseMap.get(name) ?? { total: 0, completed: 0, effort: 0 };
     entry.total++;
-    if (a.localState?.status === "done") entry.completed++;
+    if (effectiveStatusByAssignment.get(a.id) === "done") entry.completed++;
     entry.effort += a.localState?.estimatedEffortMinutes ?? 0;
     courseMap.set(name, entry);
   }
@@ -128,7 +139,7 @@ export async function GET() {
       title: a.title,
       courseName: a.course.name,
       dueAt: a.dueAt?.toISOString() ?? null,
-      status: a.localState?.status ?? "not_started",
+      status: effectiveStatusByAssignment.get(a.id) ?? "not_started",
     })),
     courseBreakdown,
     totals: {

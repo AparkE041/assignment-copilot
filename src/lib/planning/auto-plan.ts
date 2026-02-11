@@ -26,6 +26,54 @@ export interface PlannedSession {
   endAt: Date;
 }
 
+export interface PlanSkippedAssignment {
+  assignmentId: string;
+  dueAt: Date | null;
+  estimatedEffortMinutes: number;
+  priority: number;
+  reason: string;
+}
+
+export interface PlanPlacementExplanation {
+  assignmentId: string;
+  startAt: Date;
+  endAt: Date;
+  dueAt: Date | null;
+  priority: number;
+  reason: string;
+}
+
+export interface PlanUnplannedAssignment {
+  assignmentId: string;
+  dueAt: Date | null;
+  priority: number;
+  remainingMinutes: number;
+  reason: string;
+}
+
+export interface AutoPlanExplainability {
+  totalAssignments: number;
+  eligibleAssignments: number;
+  freeWindowCount: number;
+  skippedAssignments: PlanSkippedAssignment[];
+  placements: PlanPlacementExplanation[];
+  unplannedAssignments: PlanUnplannedAssignment[];
+}
+
+export interface AutoPlanResult {
+  sessions: PlannedSession[];
+  explainability: AutoPlanExplainability;
+}
+
+function describeUrgency(reference: Date, dueAt: Date): string {
+  const diffMs = dueAt.getTime() - reference.getTime();
+  const diffHours = diffMs / 3_600_000;
+  if (diffHours <= 24) return "due within 24 hours";
+  if (diffHours <= 72) return "due within 3 days";
+  if (diffHours <= 24 * 7) return "due within 7 days";
+  return "scheduled ahead of due date";
+}
+
 export function autoPlan(
   assignments: AssignmentForPlan[],
   availability: AvailabilityBlock[],
@@ -35,22 +83,51 @@ export function autoPlan(
     bufferMinutes?: number;
     maxMinutesPerDay?: number;
   },
-): PlannedSession[] {
+): AutoPlanResult {
   const minSession = options?.minSessionMinutes ?? 30;
   const maxSession = options?.maxSessionMinutes ?? 60;
   const buffer = options?.bufferMinutes ?? 10;
   const maxPerDay = options?.maxMinutesPerDay ?? 180; // 3 hours max per day
 
   const sessions: PlannedSession[] = [];
+  const placements: PlanPlacementExplanation[] = [];
+  const skippedAssignments: PlanSkippedAssignment[] = [];
   const now = new Date();
   const syntheticDeadline = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   // Filter and sort
-  const sorted = [...assignments]
+  const sorted = assignments
     .filter((a) => {
-      if (a.status === "done") return false;
-      if (a.estimatedEffortMinutes <= 0) return false;
-      if (a.dueAt && a.dueAt <= now) return false;
+      if (a.status === "done") {
+        skippedAssignments.push({
+          assignmentId: a.id,
+          dueAt: a.dueAt,
+          estimatedEffortMinutes: a.estimatedEffortMinutes,
+          priority: a.priority,
+          reason: "already completed",
+        });
+        return false;
+      }
+      if (a.estimatedEffortMinutes <= 0) {
+        skippedAssignments.push({
+          assignmentId: a.id,
+          dueAt: a.dueAt,
+          estimatedEffortMinutes: a.estimatedEffortMinutes,
+          priority: a.priority,
+          reason: "estimated effort is 0 minutes",
+        });
+        return false;
+      }
+      if (a.dueAt && a.dueAt <= now) {
+        skippedAssignments.push({
+          assignmentId: a.id,
+          dueAt: a.dueAt,
+          estimatedEffortMinutes: a.estimatedEffortMinutes,
+          priority: a.priority,
+          reason: "due date is already in the past",
+        });
+        return false;
+      }
       return true;
     })
     .map((a) => ({
@@ -63,7 +140,19 @@ export function autoPlan(
       return b.priority - a.priority;
     });
 
-  if (sorted.length === 0) return sessions;
+  if (sorted.length === 0) {
+    return {
+      sessions,
+      explainability: {
+        totalAssignments: assignments.length,
+        eligibleAssignments: 0,
+        freeWindowCount: 0,
+        skippedAssignments,
+        placements,
+        unplannedAssignments: [],
+      },
+    };
+  }
 
   // Build slots clamped to [now, ...)
   const slots = availability
@@ -74,7 +163,25 @@ export function autoPlan(
     }))
     .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
 
-  if (slots.length === 0) return sessions;
+  if (slots.length === 0) {
+    return {
+      sessions,
+      explainability: {
+        totalAssignments: assignments.length,
+        eligibleAssignments: sorted.length,
+        freeWindowCount: 0,
+        skippedAssignments,
+        placements,
+        unplannedAssignments: sorted.map((a) => ({
+          assignmentId: a.id,
+          dueAt: a.dueAt,
+          priority: a.priority,
+          remainingMinutes: a.estimatedEffortMinutes,
+          reason: "no available free windows",
+        })),
+      },
+    };
+  }
 
   // Track remaining effort per assignment
   const remaining = new Map<string, number>();
@@ -144,6 +251,14 @@ export function autoPlan(
         startAt: new Date(cursor),
         endAt: sessionEnd,
       });
+      placements.push({
+        assignmentId: best.id,
+        startAt: new Date(cursor),
+        endAt: sessionEnd,
+        dueAt: best.dueAt,
+        priority: best.priority,
+        reason: `${describeUrgency(cursor, best.effectiveDue)}; free window available; priority ${best.priority}`,
+      });
 
       remaining.set(best.id, rem - sessionMins);
       addDayUsed(cursor, sessionMins);
@@ -151,5 +266,30 @@ export function autoPlan(
     }
   }
 
-  return sessions;
+  const unplannedAssignments = sorted
+    .map((a) => ({
+      assignmentId: a.id,
+      dueAt: a.dueAt,
+      priority: a.priority,
+      remainingMinutes: remaining.get(a.id) ?? 0,
+    }))
+    .filter((a) => a.remainingMinutes > 0)
+    .map((a) => ({
+      ...a,
+      reason: a.dueAt
+        ? "not enough free windows before due date"
+        : "not enough free windows in planning horizon",
+    }));
+
+  return {
+    sessions,
+    explainability: {
+      totalAssignments: assignments.length,
+      eligibleAssignments: sorted.length,
+      freeWindowCount: slots.length,
+      skippedAssignments,
+      placements,
+      unplannedAssignments,
+    },
+  };
 }

@@ -9,6 +9,24 @@ export interface ParsedEvent {
   summary?: string;
 }
 
+export interface IcsIgnoredReason {
+  reason: string;
+  count: number;
+  examples: string[];
+}
+
+export interface IcsParseDiagnostics {
+  totalEvents: number;
+  parsedEvents: number;
+  ignoredEvents: number;
+  ignored: IcsIgnoredReason[];
+}
+
+export interface ParseIcsWithDiagnosticsResult {
+  events: ParsedEvent[];
+  diagnostics: IcsParseDiagnostics;
+}
+
 interface ParseIcsOptions {
   defaultTimeZone?: string | null;
 }
@@ -238,10 +256,27 @@ function unescapeIcsText(value: string): string {
 }
 
 export function parseIcs(icsContent: string, options?: ParseIcsOptions): ParsedEvent[] {
+  return parseIcsWithDiagnostics(icsContent, options).events;
+}
+
+export function parseIcsWithDiagnostics(
+  icsContent: string,
+  options?: ParseIcsOptions,
+): ParseIcsWithDiagnosticsResult {
   const events: ParsedEvent[] = [];
   const lines = unfoldIcsLines(icsContent);
   const profileDefaultTimeZone = normalizeTimeZone(options?.defaultTimeZone);
   let calendarDefaultTimeZone: string | null = null;
+  let totalEvents = 0;
+  const ignoredMap = new Map<string, { count: number; examples: Set<string> }>();
+  const trackIgnored = (reason: string, summary?: string | null) => {
+    const entry = ignoredMap.get(reason) ?? { count: 0, examples: new Set<string>() };
+    entry.count += 1;
+    if (summary && entry.examples.size < 3) {
+      entry.examples.add(summary);
+    }
+    ignoredMap.set(reason, entry);
+  };
   let current: {
     dtstart?: string;
     dtstartParams?: Record<string, string>;
@@ -279,52 +314,85 @@ export function parseIcs(icsContent: string, options?: ParseIcsOptions): ParsedE
 
     if (key === "BEGIN" && value === "VEVENT") {
       inEvent = true;
+      totalEvents += 1;
       current = {};
     } else if (key === "END" && value === "VEVENT") {
-      if (current.dtstart) {
-        const dtstartParams = current.dtstartParams ?? {};
-        const dtendParams = current.dtendParams ?? {};
-        const inheritedTimeZone =
-          normalizeTimeZone(dtendParams.TZID) ??
-          normalizeTimeZone(dtstartParams.TZID);
-        const effectiveDefaultTimeZone =
-          calendarDefaultTimeZone ?? profileDefaultTimeZone ?? undefined;
+      if (!current.dtstart) {
+        trackIgnored("missing DTSTART", current.summary);
+        inEvent = false;
+        current = {};
+        continue;
+      }
 
-        const start = parseDateValue(current.dtstart, dtstartParams, {
-          defaultTimeZone: effectiveDefaultTimeZone,
-        });
-        let end: Date | null = null;
-        if (current.dtend) {
-          end = parseDateValue(current.dtend, {
+      const dtstartParams = current.dtstartParams ?? {};
+      const dtendParams = current.dtendParams ?? {};
+      const inheritedTimeZone =
+        normalizeTimeZone(dtendParams.TZID) ??
+        normalizeTimeZone(dtstartParams.TZID);
+      const effectiveDefaultTimeZone =
+        calendarDefaultTimeZone ?? profileDefaultTimeZone ?? undefined;
+
+      const start = parseDateValue(current.dtstart, dtstartParams, {
+        defaultTimeZone: effectiveDefaultTimeZone,
+      });
+      if (!start) {
+        trackIgnored("invalid DTSTART", current.summary);
+        inEvent = false;
+        current = {};
+        continue;
+      }
+
+      let end: Date | null = null;
+      if (current.dtend) {
+        end = parseDateValue(
+          current.dtend,
+          {
             ...dtendParams,
             TZID: dtendParams.TZID ?? inheritedTimeZone ?? undefined,
-          }, {
+          },
+          {
             defaultTimeZone: effectiveDefaultTimeZone,
-          });
-        }
-
-        if (start && !end && current.duration) {
-          const durationMs = parseDurationToMs(current.duration);
-          if (durationMs && durationMs > 0) {
-            end = new Date(start.getTime() + durationMs);
-          }
-        }
-
-        if (start && !end) {
-          const startIsAllDay =
-            (dtstartParams.VALUE?.toUpperCase() === "DATE") ||
-            /^\d{8}$/.test(current.dtstart);
-          end = new Date(start.getTime() + (startIsAllDay ? 24 : 1) * 60 * 60 * 1000);
-        }
-
-        if (start && end && end > start) {
-          events.push({
-            start,
-            end,
-            summary: current.summary,
-          });
+          },
+        );
+        if (!end) {
+          trackIgnored("invalid DTEND", current.summary);
+          inEvent = false;
+          current = {};
+          continue;
         }
       }
+
+      if (!end && current.duration) {
+        const durationMs = parseDurationToMs(current.duration);
+        if (durationMs && durationMs > 0) {
+          end = new Date(start.getTime() + durationMs);
+        } else {
+          trackIgnored("invalid DURATION", current.summary);
+          inEvent = false;
+          current = {};
+          continue;
+        }
+      }
+
+      if (!end) {
+        const startIsAllDay =
+          (dtstartParams.VALUE?.toUpperCase() === "DATE") ||
+          /^\d{8}$/.test(current.dtstart);
+        end = new Date(start.getTime() + (startIsAllDay ? 24 : 1) * 60 * 60 * 1000);
+      }
+
+      if (end <= start) {
+        trackIgnored("DTEND must be after DTSTART", current.summary);
+        inEvent = false;
+        current = {};
+        continue;
+      }
+
+      events.push({
+        start,
+        end,
+        summary: current.summary,
+      });
       inEvent = false;
       current = {};
     } else if (inEvent) {
@@ -342,5 +410,19 @@ export function parseIcs(icsContent: string, options?: ParseIcsOptions): ParsedE
     }
   }
 
-  return events;
+  const ignored = Array.from(ignoredMap.entries()).map(([reason, value]) => ({
+    reason,
+    count: value.count,
+    examples: Array.from(value.examples),
+  }));
+
+  return {
+    events,
+    diagnostics: {
+      totalEvents,
+      parsedEvents: events.length,
+      ignoredEvents: Math.max(totalEvents - events.length, 0),
+      ignored,
+    },
+  };
 }

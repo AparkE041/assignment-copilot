@@ -20,6 +20,14 @@ interface AvailabilitySubscription {
 interface IcsUploadStatus {
   importedBlocks: number;
   latestImportedAt: string | null;
+  lastStatus?: string;
+  lastAttemptAt?: string | null;
+  diagnostics?: {
+    totalEvents?: number;
+    parsedEvents?: number;
+    ignoredEvents?: number;
+    ignored?: { reason: string; count: number; examples?: string[] }[];
+  } | null;
 }
 
 function formatDateTime(value: string | null): string {
@@ -55,6 +63,9 @@ export function AvailabilityImport() {
   const [icsStatus, setIcsStatus] = useState<IcsUploadStatus>({
     importedBlocks: 0,
     latestImportedAt: null,
+    lastStatus: "never",
+    lastAttemptAt: null,
+    diagnostics: null,
   });
   const [uploadMessage, setUploadMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [subscriptionMessage, setSubscriptionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -74,6 +85,9 @@ export function AvailabilityImport() {
       setIcsStatus({
         importedBlocks: data.importedBlocks ?? 0,
         latestImportedAt: data.latestImportedAt ?? null,
+        lastStatus: data.lastStatus ?? "never",
+        lastAttemptAt: data.lastAttemptAt ?? null,
+        diagnostics: data.diagnostics ?? null,
       });
     } catch {
       // Non-blocking.
@@ -129,16 +143,32 @@ export function AvailabilityImport() {
       });
       const data = await safeJson<{
         imported?: number;
+        diagnostics?: {
+          totalEvents?: number;
+          parsedEvents?: number;
+          ignoredEvents?: number;
+          ignored?: { reason: string; count: number; examples?: string[] }[];
+        };
         error?: string;
       }>(res);
       if (!res.ok) {
         setUploadMessage({ type: "error", text: data.error ?? "Import failed." });
+        if (data.diagnostics) {
+          setIcsStatus((current) => ({
+            ...current,
+            diagnostics: data.diagnostics ?? null,
+            lastStatus: "failed",
+            lastAttemptAt: new Date().toISOString(),
+          }));
+        }
         return;
       }
       const imported = data.imported ?? 0;
+      const parsedEvents = data.diagnostics?.parsedEvents ?? imported;
+      const ignoredEvents = data.diagnostics?.ignoredEvents ?? 0;
       setUploadMessage({
         type: "success",
-        text: `Imported ${imported} busy block${imported === 1 ? "" : "s"} from file.`,
+        text: `Imported ${imported} busy block${imported === 1 ? "" : "s"} from file (${parsedEvents} parsed, ${ignoredEvents} ignored).`,
       });
       await loadIcsStatus();
       fileInput.value = "";
@@ -316,6 +346,31 @@ export function AvailabilityImport() {
             <p className="text-xs text-muted-foreground">
               Last import: {formatDateTime(icsStatus.latestImportedAt)}
             </p>
+            <p className="text-xs text-muted-foreground">
+              Last parse status: {icsStatus.lastStatus ?? "never"}
+            </p>
+            {icsStatus.diagnostics && (
+              <div className="mt-2 rounded-lg border border-border/60 bg-background/60 p-2.5">
+                <p className="text-xs text-muted-foreground">
+                  Parsed {icsStatus.diagnostics.parsedEvents ?? 0} of{" "}
+                  {icsStatus.diagnostics.totalEvents ?? 0} events.
+                  {" "}
+                  Ignored: {icsStatus.diagnostics.ignoredEvents ?? 0}
+                </p>
+                {(icsStatus.diagnostics.ignored ?? []).length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {(icsStatus.diagnostics.ignored ?? []).slice(0, 6).map((item) => (
+                      <li key={item.reason} className="text-xs text-muted-foreground">
+                        {item.reason}: {item.count}
+                        {item.examples && item.examples.length > 0
+                          ? ` (e.g. ${item.examples.join(", ")})`
+                          : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         </form>
       </section>
