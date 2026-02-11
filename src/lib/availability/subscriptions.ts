@@ -186,13 +186,6 @@ export async function createAvailabilitySubscription({
 export async function syncAvailabilitySubscription(subscriptionId: string) {
   const subscription = await prisma.availabilitySubscription.findUnique({
     where: { id: subscriptionId },
-    include: {
-      user: {
-        select: {
-          timezone: true,
-        },
-      },
-    },
   });
   if (!subscription) {
     throw new Error("Subscription not found.");
@@ -204,9 +197,20 @@ export async function syncAvailabilitySubscription(subscriptionId: string) {
   }
 
   try {
+    let defaultTimeZone: string | null = null;
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: subscription.userId },
+        select: { timezone: true },
+      });
+      defaultTimeZone = user?.timezone ?? null;
+    } catch (error) {
+      console.warn("Could not read user timezone for subscription sync:", error);
+    }
+
     const icsText = await fetchIcsText(rawUrl);
     const events = parseIcs(icsText, {
-      defaultTimeZone: subscription.user.timezone ?? undefined,
+      defaultTimeZone: defaultTimeZone ?? undefined,
     }).filter(
       (event) => event.end instanceof Date && event.start instanceof Date && event.end > event.start
     );

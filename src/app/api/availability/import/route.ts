@@ -5,6 +5,25 @@ import { parseIcs } from "@/lib/ics/parser";
 
 const ICS_UPLOAD_SOURCES = ["ics", "ics_upload"];
 
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+  const blocks = await prisma.availabilityBlock.findMany({
+    where: { userId, source: { in: ICS_UPLOAD_SOURCES } },
+    select: { id: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json({
+    importedBlocks: blocks.length,
+    latestImportedAt: blocks[0]?.createdAt?.toISOString() ?? null,
+  });
+}
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -23,13 +42,19 @@ export async function POST(request: Request) {
 
   const text = await file.text();
   const userId = session.user.id;
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { timezone: true },
-  });
+  let defaultTimeZone: string | null = null;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { timezone: true },
+    });
+    defaultTimeZone = user?.timezone ?? null;
+  } catch (error) {
+    console.warn("Could not read user timezone for ICS import:", error);
+  }
 
   const events = parseIcs(text, {
-    defaultTimeZone: user?.timezone ?? undefined,
+    defaultTimeZone: defaultTimeZone ?? undefined,
   }).filter(
     (event) => event.end instanceof Date && event.start instanceof Date && event.end > event.start,
   );

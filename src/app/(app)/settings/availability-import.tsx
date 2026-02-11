@@ -17,6 +17,11 @@ interface AvailabilitySubscription {
   lastSyncMessage: string | null;
 }
 
+interface IcsUploadStatus {
+  importedBlocks: number;
+  latestImportedAt: string | null;
+}
+
 function formatDateTime(value: string | null): string {
   if (!value) return "Never";
   const date = new Date(value);
@@ -47,12 +52,32 @@ export function AvailabilityImport() {
   const [feedName, setFeedName] = useState("");
   const [subscriptions, setSubscriptions] = useState<AvailabilitySubscription[]>([]);
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
+  const [icsStatus, setIcsStatus] = useState<IcsUploadStatus>({
+    importedBlocks: 0,
+    latestImportedAt: null,
+  });
   const [uploadMessage, setUploadMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [subscriptionMessage, setSubscriptionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    void loadSubscriptions();
+    void Promise.all([loadSubscriptions(), loadIcsStatus()]);
   }, []);
+
+  async function loadIcsStatus() {
+    try {
+      const res = await fetch("/api/availability/import", {
+        cache: "no-store",
+      });
+      const data = await safeJson<IcsUploadStatus & { error?: string }>(res);
+      if (!res.ok) return;
+      setIcsStatus({
+        importedBlocks: data.importedBlocks ?? 0,
+        latestImportedAt: data.latestImportedAt ?? null,
+      });
+    } catch {
+      // Non-blocking.
+    }
+  }
 
   async function loadSubscriptions() {
     setSubscriptionsLoading(true);
@@ -114,6 +139,7 @@ export function AvailabilityImport() {
         type: "success",
         text: `Imported ${imported} busy block${imported === 1 ? "" : "s"} from file.`,
       });
+      await loadIcsStatus();
       fileInput.value = "";
     } catch (err) {
       setUploadMessage({
@@ -279,6 +305,17 @@ export function AvailabilityImport() {
               {uploadMessage.text}
             </FormMessage>
           )}
+          <div className="rounded-xl border border-border/60 bg-secondary/30 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Uploaded ICS Status
+            </p>
+            <p className="mt-1 text-sm text-foreground">
+              {icsStatus.importedBlocks} busy block{icsStatus.importedBlocks === 1 ? "" : "s"} imported
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Last import: {formatDateTime(icsStatus.latestImportedAt)}
+            </p>
+          </div>
         </form>
       </section>
 

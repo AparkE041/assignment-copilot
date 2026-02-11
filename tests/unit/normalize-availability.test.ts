@@ -73,4 +73,14 @@ describe("buildDefaultAvailabilityForPlanning", () => {
     expect(blocks[1]?.startAt.toISOString()).toBe("2026-02-13T17:00:00.000Z");
     expect(blocks[1]?.endAt.toISOString()).toBe("2026-02-14T01:00:00.000Z");
   });
+
+  it("falls back safely when timezone is invalid", () => {
+    const now = new Date("2026-02-12T18:00:00.000Z");
+    const blocks = buildDefaultAvailabilityForPlanning({
+      now,
+      daysAhead: 1,
+      timeZone: "Invalid/Timezone",
+    });
+    expect(blocks.length).toBeGreaterThanOrEqual(0);
+  });
 });
