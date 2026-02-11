@@ -67,4 +67,35 @@ describe("parseIcs", () => {
     expect(events).toHaveLength(1);
     expect(events[0]?.summary).toBe("Long titlecontinued");
   });
+
+  it("uses DURATION when DTEND is missing", () => {
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "BEGIN:VEVENT",
+      "DTSTART:20260212T090000Z",
+      "DURATION:PT90M",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\n");
+
+    const events = parseIcs(ics);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.start.toISOString()).toBe("2026-02-12T09:00:00.000Z");
+    expect(events[0]?.end.toISOString()).toBe("2026-02-12T10:30:00.000Z");
+  });
+
+  it("defaults all-day events without DTEND to one day", () => {
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "BEGIN:VEVENT",
+      "DTSTART;VALUE=DATE:20260212",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\n");
+
+    const events = parseIcs(ics);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.start.toISOString()).toBe("2026-02-12T00:00:00.000Z");
+    expect(events[0]?.end.toISOString()).toBe("2026-02-13T00:00:00.000Z");
+  });
 });

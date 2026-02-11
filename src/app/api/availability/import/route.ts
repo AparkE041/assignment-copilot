@@ -34,6 +34,16 @@ export async function POST(request: Request) {
     (event) => event.end instanceof Date && event.start instanceof Date && event.end > event.start,
   );
 
+  if (events.length === 0) {
+    return NextResponse.json(
+      {
+        error:
+          "No calendar events were found in this ICS file. Make sure the file contains VEVENT entries with DTSTART/DTEND (or DURATION).",
+      },
+      { status: 422 },
+    );
+  }
+
   // Delete existing ICS blocks for this user
   await prisma.availabilityBlock.deleteMany({
     where: { userId, source: { in: ICS_UPLOAD_SOURCES } },

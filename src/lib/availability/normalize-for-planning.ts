@@ -10,6 +10,14 @@ interface NormalizeOptions {
   allDayEndHour?: number;
 }
 
+interface DefaultAvailabilityOptions {
+  timeZone?: string | null;
+  now?: Date;
+  daysAhead?: number;
+  startHour?: number;
+  endHour?: number;
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat | null>();
 
@@ -34,7 +42,7 @@ function getFormatter(timeZone: string): Intl.DateTimeFormat | null {
   }
 }
 
-function getDateParts(date: Date, timeZone: string): {
+export function getDatePartsInTimeZone(date: Date, timeZone: string): {
   year: number;
   month: number;
   day: number;
@@ -60,7 +68,7 @@ function getDateParts(date: Date, timeZone: string): {
 }
 
 function getTimeZoneOffsetMs(date: Date, timeZone: string): number | null {
-  const parts = getDateParts(date, timeZone);
+  const parts = getDatePartsInTimeZone(date, timeZone);
   if (!parts) return null;
   const utcLike = Date.UTC(
     parts.year,
@@ -73,7 +81,7 @@ function getTimeZoneOffsetMs(date: Date, timeZone: string): number | null {
   return utcLike - date.getTime();
 }
 
-function zonedDateTimeToUtcDate(
+export function zonedDateTimeToUtcDate(
   year: number,
   month: number,
   day: number,
@@ -94,7 +102,7 @@ function zonedDateTimeToUtcDate(
   return new Date(guess);
 }
 
-function normalizeTimeZone(timeZone: string | null | undefined): string | null {
+export function normalizeTimeZoneForPlanning(timeZone: string | null | undefined): string | null {
   const trimmed = timeZone?.trim();
   if (!trimmed) return null;
   const normalized = trimmed.replace(/^\/+/, "");
@@ -110,8 +118,8 @@ function expandAllDayLikeBlock(
   allDayStartHour: number,
   allDayEndHour: number,
 ): AvailabilityBlockForPlanning[] {
-  const startParts = getDateParts(block.startAt, timeZone);
-  const endParts = getDateParts(block.endAt, timeZone);
+  const startParts = getDatePartsInTimeZone(block.startAt, timeZone);
+  const endParts = getDatePartsInTimeZone(block.endAt, timeZone);
   if (!startParts || !endParts) return [block];
 
   const startDayUtc = Date.UTC(startParts.year, startParts.month - 1, startParts.day);
@@ -151,6 +159,57 @@ function expandAllDayLikeBlock(
   return expanded.length > 0 ? expanded : [block];
 }
 
+export function buildDefaultAvailabilityForPlanning(
+  options?: DefaultAvailabilityOptions,
+): AvailabilityBlockForPlanning[] {
+  const now = options?.now ?? new Date();
+  const daysAhead = options?.daysAhead ?? 45;
+  const startHour = options?.startHour ?? 9;
+  const endHour = options?.endHour ?? 17;
+  const timeZone = normalizeTimeZoneForPlanning(options?.timeZone ?? null);
+
+  // Fallback for missing/invalid timezone.
+  if (!timeZone || !getFormatter(timeZone)) {
+    const blocks: AvailabilityBlockForPlanning[] = [];
+    for (let d = 0; d < daysAhead; d++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() + d);
+      const day = date.getDay();
+      if (day === 0 || day === 6) continue;
+      const start = new Date(date);
+      start.setHours(startHour, 0, 0, 0);
+      const end = new Date(date);
+      end.setHours(endHour, 0, 0, 0);
+      if (end > now) blocks.push({ startAt: start, endAt: end });
+    }
+    return blocks;
+  }
+
+  const nowParts = getDatePartsInTimeZone(now, timeZone);
+  if (!nowParts) return [];
+
+  const localStartDayUtc = Date.UTC(nowParts.year, nowParts.month - 1, nowParts.day);
+  const blocks: AvailabilityBlockForPlanning[] = [];
+
+  for (let d = 0; d < daysAhead; d++) {
+    const dayUtc = new Date(localStartDayUtc + d * DAY_MS);
+    const year = dayUtc.getUTCFullYear();
+    const month = dayUtc.getUTCMonth() + 1;
+    const day = dayUtc.getUTCDate();
+
+    const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+    if (weekday === 0 || weekday === 6) continue;
+
+    const start = zonedDateTimeToUtcDate(year, month, day, startHour, 0, 0, timeZone);
+    const end = zonedDateTimeToUtcDate(year, month, day, endHour, 0, 0, timeZone);
+    if (end > now) {
+      blocks.push({ startAt: start, endAt: end });
+    }
+  }
+
+  return blocks;
+}
+
 export function normalizeAvailabilityBlocksForPlanning(
   blocks: AvailabilityBlockForPlanning[],
   options?: NormalizeOptions,
@@ -158,7 +217,7 @@ export function normalizeAvailabilityBlocksForPlanning(
   const longBlockHours = options?.longBlockHours ?? 20;
   const allDayStartHour = options?.allDayStartHour ?? 8;
   const allDayEndHour = options?.allDayEndHour ?? 18;
-  const timeZone = normalizeTimeZone(options?.timeZone ?? null);
+  const timeZone = normalizeTimeZoneForPlanning(options?.timeZone ?? null);
 
   if (!timeZone || allDayEndHour <= allDayStartHour) {
     return blocks.filter((block) => block.endAt > block.startAt);

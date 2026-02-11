@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { normalizeAvailabilityBlocksForPlanning } from "@/lib/availability/normalize-for-planning";
+import {
+  buildDefaultAvailabilityForPlanning,
+  normalizeAvailabilityBlocksForPlanning,
+} from "@/lib/availability/normalize-for-planning";
 
 describe("normalizeAvailabilityBlocksForPlanning", () => {
   it("expands long all-day-like blocks into daytime windows in timezone", () => {
@@ -51,5 +54,23 @@ describe("normalizeAvailabilityBlocksForPlanning", () => {
     expect(normalized).toHaveLength(1);
     expect(normalized[0]?.startAt.toISOString()).toBe("2026-02-12T00:00:00.000Z");
     expect(normalized[0]?.endAt.toISOString()).toBe("2026-02-13T00:00:00.000Z");
+  });
+});
+
+describe("buildDefaultAvailabilityForPlanning", () => {
+  it("builds weekday 9-to-5 windows in target timezone", () => {
+    const now = new Date("2026-02-12T18:00:00.000Z"); // Thu 10:00 in Los Angeles
+    const blocks = buildDefaultAvailabilityForPlanning({
+      now,
+      daysAhead: 2,
+      timeZone: "America/Los_Angeles",
+    });
+
+    expect(blocks).toHaveLength(2);
+    // Thu + Fri, 9:00-17:00 local => 17:00-01:00 UTC in Feb.
+    expect(blocks[0]?.startAt.toISOString()).toBe("2026-02-12T17:00:00.000Z");
+    expect(blocks[0]?.endAt.toISOString()).toBe("2026-02-13T01:00:00.000Z");
+    expect(blocks[1]?.startAt.toISOString()).toBe("2026-02-13T17:00:00.000Z");
+    expect(blocks[1]?.endAt.toISOString()).toBe("2026-02-14T01:00:00.000Z");
   });
 });

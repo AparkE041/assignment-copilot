@@ -2,29 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { autoPlan } from "@/lib/planning/auto-plan";
-import { normalizeAvailabilityBlocksForPlanning } from "@/lib/availability/normalize-for-planning";
+import {
+  buildDefaultAvailabilityForPlanning,
+  normalizeAvailabilityBlocksForPlanning,
+} from "@/lib/availability/normalize-for-planning";
 import {
   isBusyCalendarSource,
   subtractBusyFromAvailability,
 } from "@/lib/availability/derive-free-windows";
-
-/** Default availability when user has none: weekdays 9am–5pm for the next 45 days. */
-function getDefaultAvailability(): { startAt: Date; endAt: Date }[] {
-  const now = new Date();
-  const blocks: { startAt: Date; endAt: Date }[] = [];
-  for (let d = 0; d < 45; d++) {
-    const date = new Date(now);
-    date.setDate(date.getDate() + d);
-    const day = date.getDay();
-    if (day === 0 || day === 6) continue; // skip weekend
-    const start = new Date(date);
-    start.setHours(9, 0, 0, 0);
-    const end = new Date(date);
-    end.setHours(17, 0, 0, 0);
-    if (end > now) blocks.push({ startAt: start, endAt: end });
-  }
-  return blocks;
-}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -93,7 +78,9 @@ export async function POST(request: Request) {
   const baseAvailabilityRaw =
     explicitAvailabilityBlocks.length > 0
       ? explicitAvailabilityBlocks
-      : getDefaultAvailability();
+      : buildDefaultAvailabilityForPlanning({
+          timeZone: effectiveTimeZone ?? undefined,
+        });
   const baseAvailability = normalizeAvailabilityBlocksForPlanning(
     baseAvailabilityRaw,
     { timeZone: effectiveTimeZone ?? undefined },
@@ -105,7 +92,9 @@ export async function POST(request: Request) {
   if (availability.length === 0) {
     // If user has explicit availability and it's fully blocked, keep empty and return no sessions.
     if (explicitAvailabilityBlocks.length === 0 && busyBlocks.length === 0) {
-      availability = getDefaultAvailability();
+      availability = buildDefaultAvailabilityForPlanning({
+        timeZone: effectiveTimeZone ?? undefined,
+      });
     }
   }
 

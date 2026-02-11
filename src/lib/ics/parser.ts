@@ -204,6 +204,31 @@ function parseDateValue(
   return fallback;
 }
 
+function parseDurationToMs(value: string): number | null {
+  const raw = value.trim();
+  if (!raw) return null;
+
+  const match = raw.match(/^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/i);
+  if (!match) return null;
+
+  const sign = match[1] === "-" ? -1 : 1;
+  const weeks = Number(match[2] ?? "0");
+  const days = Number(match[3] ?? "0");
+  const hours = Number(match[4] ?? "0");
+  const minutes = Number(match[5] ?? "0");
+  const seconds = Number(match[6] ?? "0");
+
+  const totalSeconds =
+    weeks * 7 * 24 * 60 * 60 +
+    days * 24 * 60 * 60 +
+    hours * 60 * 60 +
+    minutes * 60 +
+    seconds;
+  if (totalSeconds <= 0) return null;
+
+  return sign * totalSeconds * 1000;
+}
+
 function unescapeIcsText(value: string): string {
   return value
     .replace(/\\n/gi, "\n")
@@ -222,6 +247,7 @@ export function parseIcs(icsContent: string, options?: ParseIcsOptions): ParsedE
     dtstartParams?: Record<string, string>;
     dtend?: string;
     dtendParams?: Record<string, string>;
+    duration?: string;
     summary?: string;
   } = {};
   let inEvent = false;
@@ -255,7 +281,7 @@ export function parseIcs(icsContent: string, options?: ParseIcsOptions): ParsedE
       inEvent = true;
       current = {};
     } else if (key === "END" && value === "VEVENT") {
-      if (current.dtstart && current.dtend) {
+      if (current.dtstart) {
         const dtstartParams = current.dtstartParams ?? {};
         const dtendParams = current.dtendParams ?? {};
         const inheritedTimeZone =
@@ -267,12 +293,29 @@ export function parseIcs(icsContent: string, options?: ParseIcsOptions): ParsedE
         const start = parseDateValue(current.dtstart, dtstartParams, {
           defaultTimeZone: effectiveDefaultTimeZone,
         });
-        const end = parseDateValue(current.dtend, {
-          ...dtendParams,
-          TZID: dtendParams.TZID ?? inheritedTimeZone ?? undefined,
-        }, {
-          defaultTimeZone: effectiveDefaultTimeZone,
-        });
+        let end: Date | null = null;
+        if (current.dtend) {
+          end = parseDateValue(current.dtend, {
+            ...dtendParams,
+            TZID: dtendParams.TZID ?? inheritedTimeZone ?? undefined,
+          }, {
+            defaultTimeZone: effectiveDefaultTimeZone,
+          });
+        }
+
+        if (start && !end && current.duration) {
+          const durationMs = parseDurationToMs(current.duration);
+          if (durationMs && durationMs > 0) {
+            end = new Date(start.getTime() + durationMs);
+          }
+        }
+
+        if (start && !end) {
+          const startIsAllDay =
+            (dtstartParams.VALUE?.toUpperCase() === "DATE") ||
+            /^\d{8}$/.test(current.dtstart);
+          end = new Date(start.getTime() + (startIsAllDay ? 24 : 1) * 60 * 60 * 1000);
+        }
 
         if (start && end && end > start) {
           events.push({
@@ -291,6 +334,8 @@ export function parseIcs(icsContent: string, options?: ParseIcsOptions): ParsedE
       } else if (key === "DTEND") {
         current.dtend = value;
         current.dtendParams = params;
+      } else if (key === "DURATION") {
+        current.duration = value;
       } else if (key === "SUMMARY") {
         current.summary = unescapeIcsText(value);
       }
