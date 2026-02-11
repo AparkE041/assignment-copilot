@@ -18,12 +18,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/classes", label: "Classes", icon: Library },
-  { href: "/assignments", label: "Assignments", icon: BookOpen },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Dashboard", shortLabel: "Home", icon: LayoutDashboard },
+  { href: "/classes", label: "Classes", shortLabel: "Classes", icon: Library },
+  { href: "/assignments", label: "Assignments", shortLabel: "Tasks", icon: BookOpen },
+  { href: "/calendar", label: "Calendar", shortLabel: "Calendar", icon: Calendar },
+  { href: "/analytics", label: "Analytics", shortLabel: "Insights", icon: BarChart3 },
+  { href: "/settings", label: "Settings", shortLabel: "Settings", icon: Settings },
 ];
 
 interface AppNavProps {
@@ -41,7 +41,7 @@ export function AppNav({ user }: AppNavProps) {
   return (
     <nav className="sticky top-0 z-50 glass border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
@@ -110,26 +110,28 @@ export function AppNav({ user }: AppNavProps) {
         </div>
 
         {/* Mobile Nav */}
-        <div className="md:hidden flex items-center justify-around py-2 border-t border-border bg-background/80 backdrop-blur-sm">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+        <div className="md:hidden -mx-4 px-3 border-t border-border bg-background/85 backdrop-blur-sm">
+          <div className="grid grid-cols-3 gap-1 py-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 ${
-                  isActive
-                    ? "text-primary bg-primary/10"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            );
-          })}
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-[11px] font-medium transition-all active:scale-95 ${
+                    isActive
+                      ? "text-primary bg-primary/10"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="truncate w-full text-center">{item.shortLabel}</span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
     </nav>

@@ -116,7 +116,7 @@ function CalendarToolbar({
         <Button
           type="button"
           variant="outline"
-          className="h-9 rounded-xl px-4 font-semibold text-foreground min-w-[140px]"
+          className="h-9 rounded-xl px-3 sm:px-4 font-semibold text-foreground min-w-[110px] sm:min-w-[140px]"
           onClick={() => onNavigate("TODAY")}
         >
           {label}
@@ -367,37 +367,39 @@ export function CalendarView({
             </div>
         </div>
 
-        <div className="h-[680px] min-h-[420px] px-4 pb-4 [&_.rbc-toolbar]:!flex [&_.rbc-toolbar]:!flex-wrap [&_.rbc-toolbar]:!gap-3 [&_.rbc-toolbar]:!py-3 [&_.rbc-toolbar]:!px-0 [&_.rbc-toolbar]:!border-0 [&_.rbc-toolbar]:!mb-0">
-          {/* @ts-expect-error react-big-calendar types don't match drag-and-drop wrapper */}
-          <DnDCalendar
-            localizer={localizer}
-            events={events}
-            backgroundEvents={availabilityEvents}
-            startAccessor="start"
-            endAccessor="end"
-            view={view}
-            onView={setView}
-            date={date}
-            onNavigate={setDate}
-            onEventDrop={handleEventDrop}
-            onSelectEvent={handleSelectEvent}
-            eventPropGetter={eventPropGetter}
-            backgroundEventPropGetter={() => ({
-              className: "rbc-availability-bg",
-            })}
-            tooltipAccessor={tooltipAccessor}
-            formats={formats}
-            components={components}
-            views={["month", "week", "day", "agenda"]}
-            defaultView="week"
-            step={30}
-            timeslots={2}
-            scrollToTime={new Date(1970, 0, 1, 8, 0, 0)}
-            draggableAccessor={(event: CalendarEvent) => event.resource?.kind === "session"}
-            resizable
-            popup
-            selectable={false}
-          />
+        <div className="h-[68vh] min-h-[420px] sm:h-[680px] overflow-x-auto px-2 sm:px-4 pb-3 sm:pb-4 [&_.rbc-toolbar]:!flex [&_.rbc-toolbar]:!flex-wrap [&_.rbc-toolbar]:!gap-3 [&_.rbc-toolbar]:!py-3 [&_.rbc-toolbar]:!px-0 [&_.rbc-toolbar]:!border-0 [&_.rbc-toolbar]:!mb-0">
+          <div className="h-full min-w-[680px] sm:min-w-0">
+            {/* @ts-expect-error react-big-calendar types don't match drag-and-drop wrapper */}
+            <DnDCalendar
+              localizer={localizer}
+              events={events}
+              backgroundEvents={availabilityEvents}
+              startAccessor="start"
+              endAccessor="end"
+              view={view}
+              onView={setView}
+              date={date}
+              onNavigate={setDate}
+              onEventDrop={handleEventDrop}
+              onSelectEvent={handleSelectEvent}
+              eventPropGetter={eventPropGetter}
+              backgroundEventPropGetter={() => ({
+                className: "rbc-availability-bg",
+              })}
+              tooltipAccessor={tooltipAccessor}
+              formats={formats}
+              components={components}
+              views={["month", "week", "day", "agenda"]}
+              defaultView="week"
+              step={30}
+              timeslots={2}
+              scrollToTime={new Date(1970, 0, 1, 8, 0, 0)}
+              draggableAccessor={(event: CalendarEvent) => event.resource?.kind === "session"}
+              resizable
+              popup
+              selectable={false}
+            />
+          </div>
         </div>
       </div>
     </ToggleCtx.Provider>

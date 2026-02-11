@@ -218,7 +218,7 @@ export default async function CalendarPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="glass rounded-2xl p-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">This Week</p>
           <p className="mt-2 text-2xl font-bold text-foreground">{weekSessions.length}</p>

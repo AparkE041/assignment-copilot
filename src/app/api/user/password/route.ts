@@ -11,9 +11,10 @@ export async function POST(request: Request) {
   }
 
   const clientIp = getClientIp(request);
-  const rateLimit = checkRateLimit(`password-reset:${session.user.id}:${clientIp}`, {
+  const rateLimit = await checkRateLimit(`password-reset:${session.user.id}:${clientIp}`, {
     limit: 8,
     windowMs: 15 * 60 * 1000,
+    scope: "user_password_reset",
   });
 
   if (!rateLimit.success) {

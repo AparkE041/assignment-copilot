@@ -352,6 +352,15 @@
     }
   }
 
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
 }
 
 /* ================================================================= */
@@ -608,3 +617,36 @@
 .rbc-addons-dnd .rbc-addons-dnd-resize-ew-icon { display: none; }
 .rbc-addons-dnd-dragged-event { opacity: 0; }
 .rbc-addons-dnd .rbc-addons-dnd-drag-preview { opacity: 0.7; }
+
+@media (max-width: 640px) {
+  .rbc-toolbar {
+    gap: 6px;
+    padding: 10px 2px;
+  }
+
+  .rbc-toolbar .rbc-toolbar-label {
+    font-size: 0.875rem;
+  }
+
+  .rbc-toolbar button {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+
+  .rbc-time-gutter,
+  .rbc-time-header-gutter {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+  }
+
+  .rbc-label {
+    font-size: 0.6875rem;
+    padding: 0 4px;
+  }
+
+  .rbc-date-cell {
+    font-size: 0.75rem;
+    padding: 4px;
+  }
+}

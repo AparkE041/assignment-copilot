@@ -43,7 +43,7 @@ export default async function AppLayout({
   return (
     <div className="min-h-screen bg-background">
       <AppNav user={user} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 page-transition">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-8 page-transition">
         <TimezoneGuardrail storedTimezone={storedTimezone} />
         {children}
       </main>

@@ -10,9 +10,10 @@ const ISSUER = "Assignment Copilot";
 
 export async function POST(req: Request) {
   const clientIp = getClientIp(req);
-  const rateLimit = checkRateLimit(`2fa-setup:${clientIp}`, {
+  const rateLimit = await checkRateLimit(`2fa-setup:${clientIp}`, {
     limit: 20,
     windowMs: 15 * 60 * 1000,
+    scope: "auth_2fa_setup",
   });
 
   if (!rateLimit.success) {

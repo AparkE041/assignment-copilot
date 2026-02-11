@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 import { decryptSecret } from "@/lib/secret-crypto";
 import { verifyTotpCode } from "@/lib/auth/totp";
+import { checkRateLimit, getClientIpFromHeaders } from "@/lib/rate-limit";
 
 const providers: Provider[] = [
   Credentials({
@@ -17,13 +18,23 @@ const providers: Provider[] = [
       password: { label: "Password", type: "password" },
       twoFactorCode: { label: "2FA Code", type: "text" },
     },
-    async authorize(credentials) {
+    async authorize(credentials, request) {
       if (!credentials?.email || !credentials?.password) {
         return null;
       }
 
       try {
         const email = (credentials.email as string).toLowerCase().trim();
+        const clientIp = getClientIpFromHeaders(request.headers);
+        const rateLimit = await checkRateLimit(`login:${email}:${clientIp}`, {
+          limit: 10,
+          windowMs: 15 * 60 * 1000,
+          scope: "auth_login",
+        });
+        if (!rateLimit.success) {
+          return null;
+        }
+
         const user = await prisma.user.findUnique({
           where: { email },
         });
@@ -91,6 +102,7 @@ if (process.env.GITHUB_ID && process.env.GITHUB_SECRET) {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  trustHost: true,
   providers,
   pages: {
     signIn: "/login",

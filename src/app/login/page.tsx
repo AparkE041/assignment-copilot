@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getProviders, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import {
   GraduationCap,
   Mail,
@@ -41,6 +40,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [copiedOtpUri, setCopiedOtpUri] = useState(false);
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
   const router = useRouter();
 
@@ -243,7 +243,7 @@ export default function LoginPage() {
               <h1 className="text-xl font-semibold text-foreground">
                 Assignment Copilot
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="hidden sm:block text-sm text-muted-foreground">
                 Your academic companion
               </p>
             </div>
@@ -257,7 +257,7 @@ export default function LoginPage() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="w-full max-w-md"
         >
-          <div className="glass rounded-3xl p-8 shadow-apple-lg">
+          <div className="glass rounded-3xl p-5 sm:p-8 shadow-apple-lg">
             {/* Toggle */}
             <div className="flex p-1 bg-secondary rounded-2xl mb-8">
               <button
@@ -307,7 +307,7 @@ export default function LoginPage() {
                 transition={{ duration: 0.2 }}
                 className="mb-6"
               >
-                <h2 className="text-2xl font-semibold text-foreground mb-2">
+                <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
                   {isSignUp ? "Create your account" : "Welcome back"}
                 </h2>
                 <p className="text-muted-foreground">
@@ -348,15 +348,15 @@ export default function LoginPage() {
 
               {isSignUp && (
                 <div className="rounded-2xl border border-border/70 bg-secondary/30 p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex items-start gap-2">
                       <ShieldCheck className="w-4 h-4 text-primary mt-0.5" />
                       <div>
                         <p className="text-sm font-medium text-foreground">
                           2FA Setup (Required)
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Scan the QR code with Google Authenticator, 1Password, Authy, or Apple Passwords.
+                          Add this account in your authenticator app (Google Authenticator, 1Password, Authy, or Apple Passwords).
                         </p>
                       </div>
                     </div>
@@ -372,14 +372,31 @@ export default function LoginPage() {
                   </div>
 
                   {twoFactorOtpAuthUrl && (
-                    <div className="flex justify-center">
-                      <Image
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(twoFactorOtpAuthUrl)}`}
-                        alt="2FA QR code"
-                        width={180}
-                        height={180}
-                        className="rounded-xl border border-border bg-white p-2"
-                      />
+                    <div className="rounded-xl border border-border/70 bg-background/60 p-3 space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Open authenticator setup URI:
+                      </p>
+                      <a
+                        href={twoFactorOtpAuthUrl}
+                        className="text-xs text-primary break-all hover:underline"
+                      >
+                        {twoFactorOtpAuthUrl}
+                      </a>
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-primary hover:underline"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(twoFactorOtpAuthUrl);
+                            setCopiedOtpUri(true);
+                            setTimeout(() => setCopiedOtpUri(false), 1500);
+                          } catch {
+                            setCopiedOtpUri(false);
+                          }
+                        }}
+                      >
+                        {copiedOtpUri ? "Copied setup URI" : "Copy setup URI"}
+                      </button>
                     </div>
                   )}
 

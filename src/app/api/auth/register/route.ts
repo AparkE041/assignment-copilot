@@ -9,9 +9,10 @@ export async function POST(req: Request) {
   try {
     // Rate limiting: 5 registration attempts per 15 minutes per IP
     const clientIp = getClientIp(req);
-    const rateLimit = checkRateLimit(`register:${clientIp}`, {
+    const rateLimit = await checkRateLimit(`register:${clientIp}`, {
       limit: 5,
       windowMs: 15 * 60 * 1000,
+      scope: "auth_register",
     });
 
     if (!rateLimit.success) {

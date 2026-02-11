@@ -325,3 +325,16 @@ model SyncLog {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model ApiRateLimit {
+  id          String   @id @default(cuid())
+  keyHash     String
+  scope       String
+  windowStart DateTime
+  count       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([keyHash, scope, windowStart])
+  @@index([scope, windowStart])
+}
